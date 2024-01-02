@@ -37,11 +37,12 @@ namespace ts {
                 getShape(arr[0], dim + 1);
         }
 
-        static VariantData copy_tile(VariantData *src, Tensor *dst, int idx, int *src_shape, int dim);
 
         void print(std::ostream& os, int index, int dim) const;
 
 
+    public:
+        static VariantData copy_tile(VariantData *src, Tensor *dst, int idx, int *src_shape, int dim);
         template<size_t N>
         static Tensor getShapeTensor(int (&size)[N]) {
             Tensor t = Tensor();
@@ -52,15 +53,36 @@ namespace ts {
                 t.shape[i] = size[i];
                 t.total_size *= size[i];
             }
+            t.data_shared.reset(new VariantData[t.total_size]);
+            t.data = t.data_shared.get();
             return t;
         }
 
-    public:
+        static Tensor getShapeTensor(const int size[], int N) {
+            Tensor t = Tensor();
+            t.dimension = N;
+            t.shape.reset(new int[t.dimension]);
+            t.total_size = 1;
+            for (int i = 0; i < t.dimension; i++) {
+                t.shape[i] = size[i];
+                t.total_size *= size[i];
+            }
+            t.data_shared.reset(new VariantData[t.total_size]);
+            t.data = t.data_shared.get();
+            return t;
+        }
+
         int* size();
 
         std::string type();
 
         VariantData *data_ptr();
+
+        int get_total_size() ;
+
+        int* get_shape() const;
+
+        int get_dimension() const;
 
         template<typename T, size_t N>
         explicit Tensor(T (&arr)[N]) {
@@ -89,52 +111,7 @@ namespace ts {
 
 
 
-        template<typename T, size_t N>
-        static Tensor zeros(int (&size)[N]) {
-            Tensor t = getShapeTensor(size);
-            t.data_shared.reset(new VariantData[t.total_size]);
-            t.data = t.data_shared.get();
-            for (int i = 0; i < t.total_size; i++) {
-                t.data[i] = (T)0;
-            }
-            return t;
-        }
 
-        template<typename T, size_t N>
-        static Tensor ones(int (&size)[N]) {
-            Tensor t = getShapeTensor(size);
-            t.data_shared.reset(new VariantData[t.total_size]);
-            t.data = t.data_shared.get();
-            for (int i = 0; i < t.total_size; i++) {
-                t.data[i] = (T)1;
-            }
-            return t;
-        }
-
-        template<typename T, size_t N>
-            static Tensor full(int (&size)[N], T value) {
-            Tensor t = getShapeTensor(size);
-            t.data_shared.reset(new VariantData[t.total_size]);
-            t.data = t.data_shared.get();
-            for (int i = 0; i < t.total_size; i++) {
-                t.data[i] = (T)value;
-            }
-            return t;
-        }
-
-        template<typename T, size_t N>
-        static Tensor rand(int (&size)[N])  {
-            Tensor t = getShapeTensor(size);
-            std::random_device rd;  // 获取随机数种子
-            std::mt19937 gen(rd()); // 初始化Mersenne Twister伪随机数生成器
-            std::uniform_real_distribution<> distrib(0, 100);
-            t.data_shared.reset(new VariantData[t.total_size]);
-            t.data = t.data_shared.get();
-            for (int i = 0; i < t.total_size; i++) {
-                t.data[i] = (T)distrib(gen);
-            }
-            return t;
-        }
 
         template<typename T, size_t N>
         static Tensor eye(int (&size)[N]) {
@@ -147,28 +124,6 @@ namespace ts {
             int min = t.shape[0] < t.shape[1] ? t.shape[0] : t.shape[1];
             for (int i = 0; i < min; i++) {
                 t.data[i * t.shape[1] + i] = (T)1;
-            }
-            return t;
-        }
-
-        static Tensor cat(const std::pair<Tensor, Tensor>& tensors, int dim);
-
-        template<size_t N>
-        static Tensor tile(const Tensor& tensor, int (&dims)[N]) {
-            Tensor t = Tensor();
-            t.dimension = tensor.dimension;
-            t.shape.reset(new int[t.dimension]);
-            for (int i = 0; i < t.dimension; i++) {
-                t.shape[i] = tensor.shape[i] * dims[i];
-            }
-            t.total_size = 1;
-            for (int i = 0; i < t.dimension; i++) {
-                t.total_size *= t.shape[i];
-            }
-            t.data_shared.reset(new VariantData[t.total_size]);
-            t.data = t.data_shared.get();
-            for (int i = 0; i < t.total_size; i++) {
-                t.data[i] = copy_tile((tensor.data), &t, i, tensor.shape.get(), 0);
             }
             return t;
         }
@@ -187,15 +142,69 @@ namespace ts {
 
         Tensor transpose(int dim1, int dim2);
 
-        static Tensor transpose(Tensor& tensor, int dim1, int dim2);
-
-        void init_data(Tensor &t, int size) {
-
-        }
-
 
     };
 
+    template<typename T, size_t N>
+    static Tensor rand(int (&size)[N])  {
+        Tensor t = Tensor::getShapeTensor(size);
+        std::random_device rd;  // 获取随机数种子
+        std::mt19937 gen(rd()); // 初始化Mersenne Twister伪随机数生成器
+        std::uniform_real_distribution<> distrib(0, 100);
 
+        for (int i = 0; i < t.get_total_size(); i++) {
+            t.data_ptr()[i] = (T)distrib(gen);
+        }
+        return t;
+    }
+
+    template<typename T, size_t N>
+    static Tensor zeros(int (&size)[N]) {
+        Tensor t = Tensor::getShapeTensor(size);
+        for (int i = 0; i < t.get_total_size(); i++) {
+            t.data_ptr()[i] = (T)0;
+        }
+        return t;
+    }
+
+    template<typename T, size_t N>
+    static Tensor ones(int (&size)[N]) {
+        Tensor t = Tensor::getShapeTensor(size);
+        for (int i = 0; i < t.get_total_size(); i++) {
+            t.data_ptr()[i] = (T)1;
+        }
+        return t;
+    }
+
+    template<typename T, size_t N>
+    static Tensor full(int (&size)[N], T value) {
+        Tensor t = Tensor::getShapeTensor(size);
+        for (int i = 0; i < t.get_total_size(); i++) {
+            t.data_ptr()[i] = (T)value;
+        }
+        return t;
+    }
+
+    static Tensor cat(const std::pair<Tensor, Tensor>& tensors, int dim);
+
+    template<size_t N>
+    static Tensor tile(Tensor& tensor, int (&dims)[N]) {
+        const int dimension = tensor.get_dimension();
+        if (dimension != N)
+            throw std::invalid_argument("dimension of tensor and dims should be equal");
+        int size[dimension];
+        for (int i = 0; i < dimension; i++) {
+            size[i] = tensor.get_shape()[i] * dims[i];
+            std::cout << size[i] << std::endl;
+        }
+        Tensor t = Tensor::getShapeTensor(size, dimension);
+
+        for (int i = 0; i < t.get_total_size(); i++) {
+            t.data_ptr()[i] = Tensor::copy_tile((tensor.data_ptr()), &t, i, tensor.get_shape(), 0);
+        }
+        return t;
+    }
+
+    static Tensor transpose(Tensor& tensor, int dim1, int dim2);
 }
 

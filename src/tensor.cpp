@@ -61,6 +61,10 @@ namespace ts {
             return data;
         }
 
+        int Tensor::get_total_size() {
+            return total_size;
+        }
+
         Tensor::Tensor() {
             dimension = 0;
             shape = nullptr;
@@ -80,26 +84,27 @@ namespace ts {
         }
 
 
+        int Tensor::get_dimension() const {
+            return dimension;
+        }
 
-        Tensor Tensor::cat(const std::pair<Tensor, Tensor>& tensors, int dim) {
-            Tensor t = Tensor();
-            t.dimension = tensors.first.dimension;
-            t.shape.reset(new int[t.dimension]);
-            for (int i = 0; i < t.dimension; i++) {
-                t.shape[i] = tensors.first.shape[i];
+        int* Tensor::get_shape() const {
+            return shape.get();
+        }
+
+        Tensor cat(std::pair<Tensor, Tensor>& tensors, int dim) {
+            const int dimension = tensors.first.get_dimension();
+            int size[dimension];
+            for (int i = 0; i < dimension; i++) {
+                size[i] = tensors.first.get_shape()[i];
             }
-            t.shape[dim] += tensors.second.shape[dim];
-            t.total_size = 1;
-            for (int i = 0; i < t.dimension; i++) {
-                t.total_size *= t.shape[i];
-            }
-            t.data_shared.reset(new VariantData[t.total_size]);
-            t.data = t.data_shared.get();
-            for (int i = 0; i < t.total_size; i++) {
-                if (i < tensors.first.total_size) {
-                    t.data[i] = tensors.first.data[i];
-                } else {
-                    t.data[i] = tensors.second.data[i - tensors.first.total_size];
+            size[dim] += tensors.second.get_shape()[dim];
+            Tensor t = Tensor::getShapeTensor(size, dimension);
+            for (int i = 0; i < t.get_total_size(); i++) {
+                if (i < tensors.first.get_total_size())
+                    t.data_ptr()[i] = tensors.first.data_ptr()[i];
+                else {
+                    t.data_ptr()[i] = tensors.second.data_ptr()[i - tensors.first.get_total_size()];
                 }
             }
             return t;
@@ -189,7 +194,7 @@ namespace ts {
             return *this;
         }
 
-        Tensor Tensor::transpose(Tensor& tensor, int dim1, int dim2) {
+        Tensor transpose(Tensor& tensor, int dim1, int dim2) {
             return tensor.transpose(dim1, dim2);
         }
 
