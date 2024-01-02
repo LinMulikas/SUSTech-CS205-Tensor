@@ -43,6 +43,7 @@ namespace ts {
 
     public:
         static VariantData copy_tile(VariantData *src, Tensor *dst, int idx, int *src_shape, int dim);
+
         template<size_t N>
         static Tensor getShapeTensor(int (&size)[N]) {
             Tensor t = Tensor();
@@ -106,11 +107,9 @@ namespace ts {
         }
 
         Tensor();
+        int cal_stride(int dim, int *shape);
 
         friend std::ostream& operator<<(std::ostream& os, const Tensor& t);
-
-
-
 
 
         template<typename T, size_t N>
@@ -141,8 +140,21 @@ namespace ts {
         }
 
         Tensor transpose(int dim1, int dim2);
+        Tensor permute(int dim[]);
 
-
+        template<size_t N>
+        Tensor view(int (&shape)[N]) {
+            Tensor t = Tensor();
+            t.data = data;
+            t.data_shared = data_shared;
+            t.total_size = total_size;
+            t.dimension = N;
+            t.shape.reset(new int[t.dimension]);
+            for (int i = 0; i < t.dimension; i++) {
+                t.shape[i] = shape[i];
+            }
+            return t;
+        }
     };
 
     template<typename T, size_t N>
@@ -205,6 +217,12 @@ namespace ts {
         return t;
     }
 
-    static Tensor transpose(Tensor& tensor, int dim1, int dim2);
+    static Tensor transpose(Tensor tensor, int dim1, int dim2);
+    static Tensor permute(Tensor tensor, int dim[]);
+
+    template<size_t N>
+    static Tensor view(Tensor tensor, int (&shape)[N]) {
+        return tensor.view(shape);
+    }
 }
 

@@ -145,6 +145,14 @@ namespace ts {
             }
         }
 
+        int Tensor::cal_stride(int dim, int *shape) {
+            int stride = 1;
+            for (int i = dim + 1; i < dimension; i++) {
+                stride *= shape[i];
+            }
+            return stride;
+        }
+
 
         Tensor Tensor::transpose(int dim1, int dim2) {
             // 检查维度是否有效
@@ -152,33 +160,25 @@ namespace ts {
                 throw std::out_of_range("Invalid dimensions for transpose");
             }
 
-            int old_dim1 = 1;
-            for (int i = dim1 + 1; i < dimension; ++i) {
-                old_dim1 *= shape[i];
-            }
+            int old_dim1 = cal_stride(dim1, shape.get());
             int mod_dim1 = old_dim1 * shape[dim1];
 
-            int old_dim2 = 1;
-            for (int i = dim2 + 1; i < dimension; ++i) {
-                old_dim2 *= shape[i];
-            }
+            int old_dim2 = cal_stride(dim2, shape.get());
             int mod_dim2 = old_dim2 * shape[dim2];
 
             // 交换shape中的维度
-            std::swap(shape[dim1], shape[dim2]);
+            int *newShape = new int[dimension];
+            for (int i = 0; i < dimension; ++i) {
+                newShape[i] = shape[i];
+            }
+            newShape[dim1] = shape[dim2];
+            newShape[dim2] = shape[dim1];
 
             auto newData = new VariantData[total_size];
 
-            int sub_dim1 = 1;
-            for (int i = dim1 + 1; i < dimension; ++i) {
-                sub_dim1 *= shape[i];
-            }
+            int sub_dim1 = cal_stride(dim1, newShape);
 
-            int sub_dim2 = 1;
-            for (int i = dim2 + 1; i < dimension; ++i) {
-                sub_dim2 *= shape[i];
-            }
-
+            int sub_dim2 = cal_stride(dim2, newShape);
             // 把原来的坐标转化为新坐标，data[d1][...][d2] - data[d2][...][d1]差值计算
             for (int i = 0; i < total_size; ++i) {
                 int d1 = (i % mod_dim1) / old_dim1;
@@ -187,16 +187,79 @@ namespace ts {
                 newData[idx] = data[i];
             }
 
+            Tensor tensor = Tensor::getShapeTensor(newShape, dimension);
             for (int i = 0; i < total_size; ++i) {
-                data[i] = newData[i];
+                tensor.data_ptr()[i] = newData[i];
             }
 
-            return *this;
+            return tensor;
         }
 
-        Tensor transpose(Tensor& tensor, int dim1, int dim2) {
+        int calculateIndex(int* indices, int* strides, int dimension) {
+            int index = 0;
+            for (int i = 0; i < dimension; ++i) {
+                index += strides[i] * indices[i];
+            }
+            return index;
+        }
+
+        int* getStrides(int* shape, int dimension) {
+            int* strides = new int[dimension];
+            for (int i = 0; i < dimension; ++i) {
+                strides[i] = 1;
+                for (int j = i + 1; j < dimension; ++j) {
+                    strides[i] *= shape[j];
+                }
+            }
+            return strides;
+        }
+
+        Tensor Tensor::permute(int dim[]) {
+            int *strides = getStrides(shape.get(), dimension);
+            std::shared_ptr<int> newShape(new int[dimension]);
+
+            for (int i = 0; i < dimension; ++i) {
+                newShape.get()[i] = shape[dim[i]];
+            }
+            int *newStrides = getStrides(newShape.get(), dimension);
+            auto newArr = new VariantData[total_size];
+
+            for (int i = 0; i < total_size; ++i) {
+                int* indices = new int[dimension];
+                int idx = i;
+                for (int j = 0; j < dimension; ++j) {
+                    indices[j] = idx / strides[j];
+                    idx = idx % strides[j];
+                }
+                int* permuted_indices = new int[dimension];
+                for (int j = 0; j < dimension; ++j) {
+                    permuted_indices[j] = indices[dim[j]];
+                }
+
+                int newIdx = calculateIndex(permuted_indices, newStrides, dimension);
+                newArr[newIdx] = data[i];
+                delete[] indices;
+                delete[] permuted_indices;
+            }
+
+            Tensor t = Tensor::getShapeTensor(newShape.get(), dimension);
+            for (int i = 0; i < total_size; ++i) {
+                t.data_ptr()[i] = newArr[i];
+            }
+
+            delete[] strides;
+            delete[] newStrides;
+            return t;
+        }
+
+        Tensor transpose(Tensor tensor, int dim1, int dim2) {
             return tensor.transpose(dim1, dim2);
         }
+
+        Tensor permute(Tensor tensor, int dim[]) {
+            return tensor.permute(dim);
+        }
+
 
 
 }
