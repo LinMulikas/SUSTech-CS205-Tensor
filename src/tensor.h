@@ -4,306 +4,376 @@
 #include <iomanip>
 #include <vector>
 #include <memory>
-#include "random"
+#include <random>
+#include <typeinfo>
 
 namespace ts{
-    using VariantData = std::variant<bool, int, float, double>;
-    using std::vector;
+using VariantData = std::variant<bool, int, float, double>;
 
-    template<class T>
-    int dtypeFrom(T t){
-        if(typeid(T) == typeid(bool)) return 0;
-        if(typeid(T) == typeid(int)) return 1;
-        if(typeid(T) == typeid(float)) return 2;
-        if(typeid(T) == typeid(double)) return 3;
+
+using std::vector;
+
+template<class T>
+int dtype_id_from(){
+    if(typeid(T) == typeid(bool)) return 0;
+    if(typeid(T) == typeid(int)) return 1;
+    if(typeid(T) == typeid(float)) return 2;
+    if(typeid(T) == typeid(double)) return 3;
+    return -1;
+}
+
+class Tensor{
+private:
+    std::shared_ptr<VariantData[]> data_shared;
+    VariantData *data;
+
+    int dimension;
+    std::shared_ptr<int[]> shape;
+
+    int total_size;
+    int dtype_id;
+
+    template<typename ArrayType, size_t N>
+    void copyData(ArrayType(&arr)[N], VariantData *&dest, VariantData *destEnd){
+        for(size_t i = 0; i < N; ++i){
+            if constexpr(std::is_array<ArrayType>::value){
+                copyData(arr[i], dest, destEnd);
+            }
+            else{
+                *dest = arr[i];
+                if(dest < destEnd)
+                    dest++;
+            }
+        }
     }
 
-    class Tensor{
-    private:
-        std::shared_ptr<VariantData[]> data_shared;
-        VariantData *data;
-
-        int dimension;
-        std::shared_ptr<int[]> shape;
-
-        int total_size;
-        int dtype;
-
-
-        template<typename ArrayType, size_t N>
-        void copyData(ArrayType(&arr)[N], VariantData *&dest, VariantData *destEnd){
-            for(size_t i = 0; i < N; ++i){
-                if constexpr(std::is_array<ArrayType>::value){
-                    copyData(arr[i], dest, destEnd);
-                }
-                else{
-                    *dest = arr[i];
-                    if(dest < destEnd)
-                        dest++;
-                }
-            }
-        }
-
-        template<typename ArrayType, size_t N>
-        void getShape(ArrayType(&arr)[N], int dim){
-            shape.get()[dim] = N;
-            if constexpr(std::is_array<ArrayType>::value)
-                getShape(arr[0], dim + 1);
-        }
-
-
-        void print(std::ostream &os, int index, int dim) const;
-
-
-    public:
-        static VariantData copy_tile(VariantData *src, Tensor *dst, int idx, int *src_shape, int dim);
-
-        template<size_t N>
-        static Tensor getShapeTensor(int(&size)[N]){
-            Tensor t = Tensor();
-            t.dimension = N;
-            t.shape.reset(new int[t.dimension]);
-            t.total_size = 1;
-            for(int i = 0; i < t.dimension; i++){
-                t.shape[i] = size[i];
-                t.total_size *= size[i];
-            }
-            t.data_shared.reset(new VariantData[t.total_size]);
-            t.data = t.data_shared.get();
-            return t;
-        }
-
-        static Tensor getShapeTensor(const int size[], int N){
-            Tensor t = Tensor();
-            t.dimension = N;
-            t.shape.reset(new int[t.dimension]);
-            t.total_size = 1;
-            for(int i = 0; i < t.dimension; i++){
-                t.shape[i] = size[i];
-                t.total_size *= size[i];
-            }
-            t.data_shared.reset(new VariantData[t.total_size]);
-            t.data = t.data_shared.get();
-            return t;
-        }
-
-        int *size();
-
-        std::string type();
-
-        VariantData *data_ptr();
-
-        int get_total_size();
-
-        int *get_shape() const;
-
-        int get_dimension() const;
-
-        void showShape(){
-            for(int i = 0; i < dimension; i++){
-                std::cout << shape[i] << " ";
-            }
-            std::cout << std::endl;
-        }
-
-
-        // Constructors
-        // - Init tensor with exact data.
-        template<typename T, size_t N>
-        explicit Tensor(T(&arr)[N]){
-            // dimension of arr, e.g. double[2][1] dimension = 2
-            dimension = std::rank<T>::value + 1;
-            shape.reset(new int[dimension]);
-            using BaseType = typename std::remove_all_extents<T>::type();
-            // type_name = typeid(BaseType).name();
-
-            dtype = dtypeFrom(arr[0]);
-
-            getShape(arr, 0);
-
-            // copy array to data
-            total_size = 1;
-            for(int i = 0; i < dimension; i++){
-                total_size *= shape[i];
-            }
-            data_shared.reset(new VariantData[total_size]);
-            data = data_shared.get();
-            VariantData *pointer = data;
-            copyData(arr, pointer, data_shared.get() + total_size);
-        }
-
-        Tensor();
-
-        int cal_stride(int dim, int *shape);
-
-        friend std::ostream &operator<<(std::ostream &os, const Tensor &t);
-
-        template<typename T, size_t N>
-        static Tensor eye(int(&size)[N]){
-            Tensor t = getShapeTensor(size);
-            t.data_shared.reset(new VariantData[t.total_size]);
-            t.data = t.data_shared.get();
-            for(int i = 0; i < t.total_size; i++){
-                t.data[i] = (T)0;
-            }
-            int min = t.shape[0] < t.shape[1] ? t.shape[0] : t.shape[1];
-            for(int i = 0; i < min; i++){
-                t.data[i * t.shape[1] + i] = (T)1;
-            }
-            return t;
-        }
-
-        Tensor operator()(int idx);
-        Tensor operator()(int idx, std::pair<int, int> range);
-
-        void operator=(const VariantData &value);
-
-        template<size_t N>
-        void operator=(const int(&arr)[N]){
-            copyData(arr, data, data + total_size);
-        }
-
-        Tensor transpose(int dim1, int dim2);
-        Tensor permute(int dim[]);
-
-        template<size_t N>
-        Tensor view(int(&shape)[N]){
-            Tensor t = Tensor();
-            t.data = data;
-            t.data_shared = data_shared;
-            t.total_size = total_size;
-            t.dimension = N;
-            t.shape.reset(new int[t.dimension]);
-            for(int i = 0; i < t.dimension; i++){
-                t.shape[i] = shape[i];
-            }
-            return t;
-        }
-
-        // Math operators
-        static Tensor add(Tensor &t1, Tensor &t2);
-        friend Tensor operator+(Tensor &t1, Tensor &t2);
-
-        static Tensor sub(Tensor &t1, Tensor &t2);
-        friend Tensor operator-(Tensor &t1, Tensor &t2);
-
-        static Tensor mul(Tensor &t1, Tensor &t2);
-        friend Tensor operator*(Tensor &t1, Tensor &t2);
-
-        static Tensor div(Tensor &t1, Tensor &t2);
-
-        static Tensor dot(Tensor &t1, Tensor &t2);
-
-        // Reduction operators
-        // Shrink the zero dims of a tensor.
-        static Tensor shrink(Tensor &ts){
-
-        }
-
-        static Tensor sum(Tensor &ts, vector<int> dims){
-            for(int dim : dims){
-                if(dim < 0 || dim >= ts.get_dimension()){
-                    throw std::invalid_argument("Invalid dimension input.");
-                }
-            }
-
-            Tensor t = Tensor();
-            t.shape.reset(new int[ts.get_dimension()]);
-
-            std::sort(dims.begin(), dims.end());
-
-            int j = 0;
-            for(int i = 0; i < ts.dimension; i++){
-                if(j < dims.size()){
-                    // Need to be added.
-                    if(i == dims[j]){
-                        j++;
-                    }
-                }
-                else{
-                    break;
-                }
-            }
-
-        }
-    };
-
-
-
-    template<typename T, size_t N>
-    static Tensor rand(int(&size)[N]){
-        Tensor t = Tensor::getShapeTensor(size);
-        std::random_device rd;  // 获取随机数种子
-        std::mt19937 gen(rd()); // 初始化Mersenne Twister伪随机数生成器
-        std::uniform_real_distribution<> distrib(0, 100);
-
-        for(int i = 0; i < t.get_total_size(); i++){
-            t.data_ptr()[i] = (T)distrib(gen);
-        }
-        return t;
+    template<typename ArrayType, size_t N>
+    void getShape(ArrayType(&arr)[N], int dim){
+        shape.get()[dim] = N;
+        if constexpr(std::is_array<ArrayType>::value)
+            getShape(arr[0], dim + 1);
     }
 
-    template<typename T, size_t N>
-    static Tensor zeros(int(&size)[N]){
-        Tensor t = Tensor::getShapeTensor(size);
-        for(int i = 0; i < t.get_total_size(); i++){
-            t.data_ptr()[i] = (T)0;
-        }
-        return t;
-    }
 
-    static Tensor zeros_like(Tensor &ts){
-        int *arr = ts.get_shape();
-        const int len = sizeof(arr) / sizeof(arr[0]);
-        int shape_arr[len];
-        Tensor result = zeros<int>(shape_arr);
-        return result;
-    }
+    void print(std::ostream &os, int index, int dim) const;
 
-    template<typename T, size_t N>
-    static Tensor ones(int(&size)[N]){
-        Tensor t = Tensor::getShapeTensor(size);
-        for(int i = 0; i < t.get_total_size(); i++){
-            t.data_ptr()[i] = (T)1;
-        }
-        return t;
-    }
 
-    template<typename T, size_t N>
-    static Tensor full(int(&size)[N], T value){
-        Tensor t = Tensor::getShapeTensor(size);
-        for(int i = 0; i < t.get_total_size(); i++){
-            t.data_ptr()[i] = (T)value;
-        }
-        return t;
-    }
+public:
+    static VariantData copy_tile(VariantData *src, Tensor *dst, int idx, int *src_shape, int dim);
 
-    static Tensor cat(const std::pair<Tensor, Tensor> &tensors, int dim);
-
+    // init a tensor with exact const shape arr.
     template<size_t N>
-    static Tensor tile(Tensor &tensor, int(&dims)[N]){
-        const int dimension = tensor.get_dimension();
-        if(dimension != N)
-            throw std::invalid_argument("dimension of tensor and dims should be equal");
-        int size[dimension];
+    static Tensor init_with_shape(int(&size)[N]){
+        Tensor t = Tensor();
+        t.dimension = N;
+        t.shape.reset(new int[t.dimension]);
+        t.total_size = 1;
+        for(int i = 0; i < t.dimension; i++){
+            t.shape[i] = size[i];
+            t.total_size *= size[i];
+        }
+        t.data_shared.reset(new VariantData[t.total_size]);
+        t.data = t.data_shared.get();
+        return t;
+    }
+
+    // init a tensor with exact shape arr and dim N.
+    static Tensor init_with_shape(const int size[], int N){
+        Tensor t = Tensor();
+        t.dimension = N;
+        t.shape.reset(new int[t.dimension]);
+        t.total_size = 1;
+        for(int i = 0; i < t.dimension; i++){
+            t.shape[i] = size[i];
+            t.total_size *= size[i];
+        }
+        t.data_shared.reset(new VariantData[t.total_size]);
+        t.data = t.data_shared.get();
+        return t;
+    }
+
+    // init a dtype=T tensor with exact shape arr and dim N.
+    template<typename T>
+    static Tensor init_with_shape(const int size[], int N){
+        Tensor t = Tensor(dtype_id_from<T>());
+        t.dimension = N;
+        t.shape.reset(new int[t.dimension]);
+        t.total_size = 1;
+        for(int i = 0; i < t.dimension; i++){
+            t.shape[i] = size[i];
+            t.total_size *= size[i];
+        }
+        t.data_shared.reset(new VariantData[t.total_size]);
+        t.data = t.data_shared.get();
+        return t;
+    }
+
+    int *size();
+
+    std::string type_name();
+
+    int get_dtype_id(){
+        return dtype_id;
+    }
+
+    VariantData *data_ptr();
+
+    int get_total_size();
+
+    int *get_shape() const;
+
+    int get_dimension() const;
+
+    void showShape(){
         for(int i = 0; i < dimension; i++){
-            size[i] = tensor.get_shape()[i] * dims[i];
-            std::cout << size[i] << std::endl;
+            std::cout << shape[i] << " ";
         }
-        Tensor t = Tensor::getShapeTensor(size, dimension);
+        std::cout << std::endl;
+    }
 
-        for(int i = 0; i < t.get_total_size(); i++){
-            t.data_ptr()[i] = Tensor::copy_tile((tensor.data_ptr()), &t, i, tensor.get_shape(), 0);
+
+    // Constructors
+    // - Init tensor with exact data.
+    template<typename T, size_t N>
+    explicit Tensor(T(&arr)[N]){
+        // dimension of arr, e.g. double[2][1] dimension = 2
+        dimension = std::rank<T>::value + 1;
+        shape.reset(new int[dimension]);
+        using BaseType = typename std::remove_all_extents<T>::type();
+        // type_name = typeid(BaseType).name();
+
+        dtype_id = dtype_id_from<T>();
+
+        getShape(arr, 0);
+
+        // copy array to data
+        total_size = 1;
+        for(int i = 0; i < dimension; i++){
+            total_size *= shape[i];
+        }
+        data_shared.reset(new VariantData[total_size]);
+        data = data_shared.get();
+        VariantData *pointer = data;
+        copyData(arr, pointer, data_shared.get() + total_size);
+    }
+
+    Tensor(int type_id);
+
+    Tensor();
+
+    int cal_stride(int dim, int *shape);
+
+    friend std::ostream &operator<<(std::ostream &os, const Tensor &t);
+
+    template<typename T, size_t N>
+    static Tensor eye(int(&size)[N]){
+        Tensor t = init_with_shape(size);
+        t.data_shared.reset(new VariantData[t.total_size]);
+        t.data = t.data_shared.get();
+        for(int i = 0; i < t.total_size; i++){
+            t.data[i] = (T)0;
+        }
+        int min = t.shape[0] < t.shape[1] ? t.shape[0] : t.shape[1];
+        for(int i = 0; i < min; i++){
+            t.data[i * t.shape[1] + i] = (T)1;
         }
         return t;
     }
 
-    static Tensor transpose(Tensor tensor, int dim1, int dim2);
-    static Tensor permute(Tensor tensor, int dim[]);
+    Tensor operator()(int idx);
+    Tensor operator()(int idx, std::pair<int, int> range);
+
+    void operator=(const VariantData &value);
 
     template<size_t N>
-    static Tensor view(Tensor tensor, int(&shape)[N]){
-        return tensor.view(shape);
+    void operator=(const int(&arr)[N]){
+        copyData(arr, data, data + total_size);
     }
+
+    Tensor transpose(int dim1, int dim2);
+    Tensor permute(int dim[]);
+
+    template<size_t N>
+    Tensor view(int(&shape)[N]){
+        Tensor t = Tensor();
+        t.data = data;
+        t.data_shared = data_shared;
+        t.total_size = total_size;
+        t.dimension = N;
+        t.shape.reset(new int[t.dimension]);
+        for(int i = 0; i < t.dimension; i++){
+            t.shape[i] = shape[i];
+        }
+        return t;
+    }
+
+
+    // Reduction operators
+    // Shrink the zero dims of a tensor.
+    static Tensor shrink(Tensor &ts);
+
+    static Tensor sum(Tensor &ts, vector<int> dims){
+        for(int dim : dims){
+            if(dim < 0 || dim >= ts.get_dimension()){
+                throw std::invalid_argument("Invalid dimension input.");
+            }
+        }
+
+        Tensor t = Tensor();
+        t.shape.reset(new int[ts.get_dimension()]);
+
+        std::sort(dims.begin(), dims.end());
+
+        int j = 0;
+        for(int i = 0; i < ts.dimension; i++){
+            if(j < dims.size()){
+                // Need to be added.
+                if(i == dims[j]){
+                    j++;
+                }
+            }
+            else{
+                break;
+            }
+        }
+    }
+
+    friend Tensor operator+(Tensor &t1, Tensor &t2);
+};
+
+
+// // Math operators
+Tensor add(Tensor &t1, Tensor &t2) throw();
+
+template<typename T, size_t N>
+static Tensor rand(int(&size)[N]){
+    Tensor t = Tensor::init_with_shape(size);
+    std::random_device rd;  // 获取随机数种子
+    std::mt19937 gen(rd()); // 初始化Mersenne Twister伪随机数生成器
+    std::uniform_real_distribution<> distrib(0, 100);
+
+    for(int i = 0; i < t.get_total_size(); i++){
+        t.data_ptr()[i] = (T)distrib(gen);
+    }
+    return t;
+}
+
+template<typename T, size_t N>
+static Tensor zeros(int(&size)[N]){
+    Tensor t = Tensor::init_with_shape<T>(size, N);
+    for(int i = 0; i < t.get_total_size(); i++){
+        t.data_ptr()[i] = (T)0;
+    }
+    return t;
+}
+
+template<typename T>
+static Tensor zeros(int *arr, size_t dim){
+    int size[dim];
+    for(int i = 0; i < dim; i++){
+        size[i] = arr[i];
+    }
+    Tensor t = Tensor::init_with_shape<T>(size, dim);
+    for(int i = 0; i < t.get_total_size(); i++){
+        t.data_ptr()[i] = (T)0;
+    }
+    return t;
+}
+
+static Tensor zeros_like(Tensor ts){
+    switch(ts.get_dtype_id()){
+    case 0:
+        return zeros<bool>(ts.get_shape(), ts.get_dimension());
+    case 1:
+        return zeros<int>(ts.get_shape(), ts.get_dimension());
+    case 2:
+        return zeros<float>(ts.get_shape(), ts.get_dimension());
+    case 3:
+        return zeros<double>(ts.get_shape(), ts.get_dimension());
+    }
+
+    return Tensor();
+}
+
+template<typename T, size_t N>
+static Tensor ones(int(&size)[N]){
+    Tensor t = Tensor::init_with_shape(size);
+    for(int i = 0; i < t.get_total_size(); i++){
+        t.data_ptr()[i] = (T)1;
+    }
+    return t;
+}
+
+template<typename T, size_t N>
+static Tensor full(int(&size)[N], T value){
+    Tensor t = Tensor::init_with_shape(size);
+    for(int i = 0; i < t.get_total_size(); i++){
+        t.data_ptr()[i] = (T)value;
+    }
+    return t;
+}
+
+static Tensor cat(const std::pair<Tensor, Tensor> &tensors, int dim);
+
+template<size_t N>
+static Tensor tile(Tensor &tensor, int(&dims)[N]){
+    const int dimension = tensor.get_dimension();
+    if(dimension != N)
+        throw std::invalid_argument("dimension of tensor and dims should be equal");
+    int size[dimension];
+    for(int i = 0; i < dimension; i++){
+        size[i] = tensor.get_shape()[i] * dims[i];
+        std::cout << size[i] << std::endl;
+    }
+    Tensor t = Tensor::init_with_shape(size, dimension);
+
+    for(int i = 0; i < t.get_total_size(); i++){
+        t.data_ptr()[i] = Tensor::copy_tile((tensor.data_ptr()), &t, i, tensor.get_shape(), 0);
+    }
+    return t;
+}
+
+static Tensor transpose(Tensor tensor, int dim1, int dim2);
+static Tensor permute(Tensor tensor, int dim[]);
+
+template<size_t N>
+static Tensor view(Tensor tensor, int(&shape)[N]){
+    return tensor.view(shape);
+}
+
+
+// Tensor operator+(Tensor &t1, Tensor &t2){
+//     std::cout << "Test";
+//     int *shape1 = t1.get_shape();
+//     int *shape2 = t2.get_shape();
+//     size_t dim1 = sizeof(shape1) / sizeof(shape1[0]);
+//     size_t dim2 = sizeof(shape1) / sizeof(shape1[0]);
+//     if(dim1 != dim2){
+//         throw std::invalid_argument("The input tensors need to be same shape.");
+//         for(int i = 0; i < dim1; i++){
+//             if(shape1[i] != shape2[i]){
+//                 throw std::invalid_argument("The input tensors need to be same shape.");
+//             }
+//         }
+//     }
+//     else{
+//         int tid_1 = t1.type_id();
+//         int tid_2 = t2.type_id();
+//         int tid_rst = std::max(tid_1, tid_2);
+
+//         Tensor result = zeros_like(t1, tid_rst);
+//         auto ptr = result.data_ptr();
+//         auto ptr1 = t1.data_ptr();
+//         auto ptr2 = t2.data_ptr();
+
+//         using type1 = VariantData[t1.data_ptr()[0].index()];
+//         using type2 = VariantData[t2.data_ptr()[0].index()];
+
+//         for(size_t i = 0; i < t1.get_total_size(); i++){
+//             ptr[i] = ptr1[i] + ptr2[i];
+//         }
+//     }
+// }
+
 }
 

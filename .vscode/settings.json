@@ -58,6 +58,9 @@
         "typeinfo": "cpp",
         "unordered_map": "cpp",
         "vector": "cpp",
-        "algorithm": "cpp"
-    }
+        "algorithm": "cpp",
+        "memory": "cpp",
+        "type_traits": "cpp"
+    },
+    "julia.environmentPath": "/Users/mulikas/GitHub/SUSTech-CS205-Tensor"
 }
