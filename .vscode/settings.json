@@ -1,16 +1,15 @@
 {
+    "julia.environmentPath": "/Users/mulikas/GitHub/SUSTech-CS205-Tensor",
     "files.associations": {
         "*.m": "matlab",
         "*.hs": "haskell",
         "*.rkt": "racket",
         "*.typ": "typst",
         "makefile_1": "makefile",
-        "new": "cpp",
-        "iostream": "cpp",
-        "variant": "cpp",
-        "ostream": "cpp",
-        "__bit_reference": "cpp",
+        "__availability": "cpp",
         "__config": "cpp",
+        "new": "cpp",
+        "__bit_reference": "cpp",
         "__debug": "cpp",
         "__errc": "cpp",
         "__hash_table": "cpp",
@@ -42,11 +41,13 @@
         "iomanip": "cpp",
         "ios": "cpp",
         "iosfwd": "cpp",
+        "iostream": "cpp",
         "istream": "cpp",
         "limits": "cpp",
         "locale": "cpp",
         "mutex": "cpp",
         "optional": "cpp",
+        "ostream": "cpp",
         "ratio": "cpp",
         "sstream": "cpp",
         "stdexcept": "cpp",
@@ -57,10 +58,15 @@
         "tuple": "cpp",
         "typeinfo": "cpp",
         "unordered_map": "cpp",
+        "variant": "cpp",
         "vector": "cpp",
         "algorithm": "cpp",
+        "type_traits": "cpp",
         "memory": "cpp",
-        "type_traits": "cpp"
-    },
-    "julia.environmentPath": "/Users/mulikas/GitHub/SUSTech-CS205-Tensor"
+        "functional": "cpp",
+        "memory_resource": "cpp",
+        "iterator": "cpp",
+        "random": "cpp",
+        "utility": "cpp"
+    }
 }

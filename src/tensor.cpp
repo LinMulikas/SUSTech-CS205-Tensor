@@ -1,26 +1,18 @@
-#include "iostream"
-#include "tensor.h"
+#include <iostream>
 #include <vector>
+#include "tensor.h"
+#include "autograd.h"
 
 namespace ts{
+using std::vector;
+
+// VariantData
 using VariantData = std::variant<bool, int, float, double>;
 
-VariantData operator+(VariantData &v1, VariantData &v2){
-    int max_tid = std::max(v1.index(), v2.index());
-    switch(max_tid){
-    case 0:
-        return std::get<bool>(v1) + std::get<bool>(v2);
-    case 1:
-        return std::get<int>(v1) + std::get<int>(v2);
-    case 2:
-        return std::get<float>(v1) + std::get<float>(v2);
-    case 3:
-        return std::get<double>(v1) + std::get<double>(v2);
-    }
-    return get<double>(v1);
-}
+template<typename T>
+T getVal(){
 
-using std::vector;
+}
 
 VariantData Tensor::copy_tile(VariantData *src, Tensor *dst, int idx, int *src_shape, int dim){
     int subarrays = 1; // 当前维度的子数组数量
@@ -306,6 +298,9 @@ Tensor permute(Tensor tensor, int dim[]){
 
 Tensor sum(Tensor &ts, int dim);
 
+Tensor operator+(Tensor &ts1, Tensor &ts2){
+    return add(ts1, ts2);
+}
 
 Tensor add(Tensor &t1, Tensor &t2) throw(){
     int *shape1 = t1.get_shape();
@@ -313,7 +308,7 @@ Tensor add(Tensor &t1, Tensor &t2) throw(){
     size_t dim1 = sizeof(shape1) / sizeof(shape1[0]);
     size_t dim2 = sizeof(shape2) / sizeof(shape2[0]);
 
-    std::cout << dim1 << " " << dim2 << std::endl;
+    // std::cout << dim1 << " " << dim2 << std::endl;
     if(dim1 != dim2){
         throw std::invalid_argument("The input tensors need to be same shape.");
         for(int i = 0; i < dim1; i++){
@@ -323,30 +318,42 @@ Tensor add(Tensor &t1, Tensor &t2) throw(){
         }
     }
     else{
+        // Type promote
+        Tensor result;
+
         int tid_1 = t1.get_dtype_id();
         int tid_2 = t2.get_dtype_id();
         int tid_rst = std::max(tid_1, tid_2);
 
-        std::cout << tid_1 << " " << tid_2 << std::endl;
-
-        Tensor result;
-
         if(tid_rst == tid_1)result = zeros_like(t1);
         else result = zeros_like(t2);
 
-        std::cout << result << std::endl;
+        for(size_t i = 0; i < result.get_total_size(); i++){
+            VariantData vd1;
+            VariantData vd2;
+            std::visit(Visitor(), vd1);
 
-        // auto ptr = result.data_ptr();
-        // auto ptr1 = t1.data_ptr();
-        // auto ptr2 = t2.data_ptr();
+            // if(tid_rst == 0){
+            //     result.data_ptr()[i] = std::get<bool>(t1.data_ptr()[i]) + std::get<bool>(t2.data_ptr()[i]);
+            // }
+            // else if(tid_rst == 1){
+            //     result.data_ptr()[i] = -1;
+            // }
+            // else if(tid_rst == 2){
+            //     result.data_ptr()[i] = -2;
+            // }
+            // else if(tid_rst == 3){
+            //     VariantData v1 = t1.data_ptr()[i];
+            //     std::cout << *(std::get_if<1>(&v1)) << std::endl;
+            //     // std::cout << std::get<3>(v1) << std::endl;
 
-        // using type1 = VariantData[t1.data_ptr()[0].index()];
-        // using type2 = VariantData[t2.data_ptr()[0].index()];
+            //     // result.data_ptr()[i] = std::get<3>(t1.data_ptr()[i]) + std::get<3>(t2.data_ptr()[i]);
+            // }
+        }
 
-        // for(size_t i = 0; i < t1.get_total_size(); i++){
-        //     ptr[i] = ptr1[i] + ptr2[i];
-        // }
+        return result;
     }
 }
+
 
 }

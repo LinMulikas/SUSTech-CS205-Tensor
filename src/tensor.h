@@ -1,3 +1,4 @@
+#pragma once
 #include <variant>
 #include <iostream>
 #include <type_traits>
@@ -6,21 +7,33 @@
 #include <memory>
 #include <random>
 #include <typeinfo>
+#include <initializer_list>
+#include "autograd.h"
 
 namespace ts{
 using VariantData = std::variant<bool, int, float, double>;
 
+struct Visitor{
+    bool operator()(bool b)const{ return b; }
+    int operator()(int i) const{ return i; }
+    float operator()(float f) const{ return f; }
+    double operator()(double d) const{ return d; }
+};
+
 
 using std::vector;
+using std::shared_ptr, std::make_shared;
 
 template<class T>
-int dtype_id_from(){
+static int dtype_id_from(){
     if(typeid(T) == typeid(bool)) return 0;
     if(typeid(T) == typeid(int)) return 1;
     if(typeid(T) == typeid(float)) return 2;
     if(typeid(T) == typeid(double)) return 3;
     return -1;
 }
+
+static bool global_require_grad = false;
 
 class Tensor{
 private:
@@ -32,6 +45,10 @@ private:
 
     int total_size;
     int dtype_id;
+
+    // Autograd
+    bool _require_grad;
+    shared_ptr<grad::Node> _node;
 
     template<typename ArrayType, size_t N>
     void copyData(ArrayType(&arr)[N], VariantData *&dest, VariantData *destEnd){
@@ -57,8 +74,15 @@ private:
 
     void print(std::ostream &os, int index, int dim) const;
 
-
 public:
+    // public autograd
+    void set_require_grad(bool require);
+    void set_node(grad::Node node);
+    void set_node(shared_ptr<grad::Node>);
+    void init_node();
+
+    friend Tensor operator+(Tensor &ts1, Tensor &ts2);
+
     static VariantData copy_tile(VariantData *src, Tensor *dst, int idx, int *src_shape, int dim);
 
     // init a tensor with exact const shape arr.
@@ -74,6 +98,8 @@ public:
         }
         t.data_shared.reset(new VariantData[t.total_size]);
         t.data = t.data_shared.get();
+        // default type float.
+        t.dtype_id = 2;
         return t;
     }
 
@@ -89,13 +115,19 @@ public:
         }
         t.data_shared.reset(new VariantData[t.total_size]);
         t.data = t.data_shared.get();
+
+        // default type float.
+        t.dtype_id = 2;
+
         return t;
     }
 
-    // init a dtype=T tensor with exact shape arr and dim N.
+    // init a dtype T tensor with exact shape arr and dim N.
+    // Have impled the autograd.
     template<typename T>
     static Tensor init_with_shape(const int size[], int N){
         Tensor t = Tensor(dtype_id_from<T>());
+
         t.dimension = N;
         t.shape.reset(new int[t.dimension]);
         t.total_size = 1;
@@ -105,6 +137,10 @@ public:
         }
         t.data_shared.reset(new VariantData[t.total_size]);
         t.data = t.data_shared.get();
+
+
+        t.dtype_id = dtype_id_from<T>();
+
         return t;
     }
 
@@ -158,7 +194,6 @@ public:
     }
 
     Tensor(int type_id);
-
     Tensor();
 
     int cal_stride(int dim, int *shape);
@@ -211,7 +246,7 @@ public:
     // Reduction operators
     // Shrink the zero dims of a tensor.
     static Tensor shrink(Tensor &ts);
-
+    // TODO: ?
     static Tensor sum(Tensor &ts, vector<int> dims){
         for(int dim : dims){
             if(dim < 0 || dim >= ts.get_dimension()){
@@ -242,12 +277,29 @@ public:
 };
 
 
-// // Math operators
-Tensor add(Tensor &t1, Tensor &t2) throw();
+// Math operators
+static Tensor add(Tensor &t1, Tensor &t2) throw();
 
 template<typename T, size_t N>
 static Tensor rand(int(&size)[N]){
-    Tensor t = Tensor::init_with_shape(size);
+    Tensor t = Tensor::init_with_shape<T>(size, N);
+    std::random_device rd;  // 获取随机数种子
+    std::mt19937 gen(rd()); // 初始化Mersenne Twister伪随机数生成器
+    std::uniform_real_distribution<> distrib(0, 100);
+
+    for(int i = 0; i < t.get_total_size(); i++){
+        t.data_ptr()[i] = (T)distrib(gen);
+    }
+    return t;
+}
+
+template<typename T>
+static Tensor rand(int *arr, const int dim){
+    int size[dim];
+    for(int i = 0; i < dim; i++){
+        size[i] = arr[i];
+    }
+    Tensor t = Tensor::init_with_shape<T>(size, dim);
     std::random_device rd;  // 获取随机数种子
     std::mt19937 gen(rd()); // 初始化Mersenne Twister伪随机数生成器
     std::uniform_real_distribution<> distrib(0, 100);
@@ -268,7 +320,7 @@ static Tensor zeros(int(&size)[N]){
 }
 
 template<typename T>
-static Tensor zeros(int *arr, size_t dim){
+static Tensor zeros(int *arr, const int dim){
     int size[dim];
     for(int i = 0; i < dim; i++){
         size[i] = arr[i];
@@ -280,10 +332,13 @@ static Tensor zeros(int *arr, size_t dim){
     return t;
 }
 
+/*
+    zeros_like with exact type.
+*/
 static Tensor zeros_like(Tensor ts){
     switch(ts.get_dtype_id()){
     case 0:
-        return zeros<bool>(ts.get_shape(), ts.get_dimension());
+        return zeros<double>(ts.get_shape(), ts.get_dimension());
     case 1:
         return zeros<int>(ts.get_shape(), ts.get_dimension());
     case 2:
