@@ -12,7 +12,6 @@ using std::make_shared, std::shared_ptr, std::vector;
 using std::initializer_list;
 using std::ostream, std::cin, std::cout, std::endl;
 
-
 class Node{
 protected:
     shared_ptr<ts::Tensor> value;
@@ -43,17 +42,31 @@ public:
         parents.push_back(make_shared<decltype(par_node)>(par_node));
     };
 
-    virtual void eval(){
-        cout << "No eval() override." << endl;
-    };
+    virtual void eval();
 
     ts::Tensor &getVal(){
         if(value == nullptr) this->eval();
         return *value;
     };
 
+    shared_ptr<ts::Tensor> value_ptr(){
+        return value;
+    }
+
+    shared_ptr<Node> grad_ptr(){
+        return grad;
+    }
+
+    vector<shared_ptr<Node>> parents_ptr(){
+        return parents;
+    }
+
+    vector<shared_ptr<Node>> children_ptr(){
+        return children;
+    }
 
     friend ostream &operator<<(ostream &os, Node &node);
+    friend Node operator+(Node &node1, Node &node2);
 };
 
 class Variable : public Node{
@@ -73,14 +86,17 @@ public:
 */
 class Add_node : public Node{
 public:
-    Add_node(Variable a, Variable b) throw();
+    Add_node(Node &a, Node &b) throw();
+    Add_node(Node a){
+        value = a.value_ptr();
+        grad = a.grad_ptr();
+        parents = a.parents_ptr();
+        children = a.children_ptr();
+    }
 
-    Add_node(shared_ptr<Node> a, shared_ptr<Node> b);
-    Add_node(initializer_list<shared_ptr<Node>> nodes);
+    void outterEval();
 
-    Add_node(initializer_list<ts::Tensor> tensors);
-
-    virtual void eval();
+    virtual void eval() throw();
 };
 
 

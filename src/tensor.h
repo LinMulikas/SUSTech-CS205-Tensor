@@ -13,12 +13,7 @@
 namespace ts{
 using VariantData = std::variant<bool, int, float, double>;
 
-struct Visitor{
-    bool operator()(bool b)const{ return b; }
-    int operator()(int i) const{ return i; }
-    float operator()(float f) const{ return f; }
-    double operator()(double d) const{ return d; }
-};
+
 
 
 using std::vector;

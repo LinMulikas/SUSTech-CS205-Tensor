@@ -9,11 +9,6 @@ using std::vector;
 // VariantData
 using VariantData = std::variant<bool, int, float, double>;
 
-template<typename T>
-T getVal(){
-
-}
-
 VariantData Tensor::copy_tile(VariantData *src, Tensor *dst, int idx, int *src_shape, int dim){
     int subarrays = 1; // 当前维度的子数组数量
     for(int d = dim + 1; d < dst->dimension; ++d){
@@ -25,6 +20,39 @@ VariantData Tensor::copy_tile(VariantData *src, Tensor *dst, int idx, int *src_s
     else
         return src[idx % src_shape[dim]];
 }
+
+/*
+    Get the val with most promotion(double).
+*/
+double promote(VariantData &vd){
+    // std::cout << "promote" << std::endl;
+    switch(vd.index()){
+    case 0:
+        return (double)(*(std::get_if<0>(&vd)));
+    case 1:
+        return (double)(*(std::get_if<1>(&vd)));
+    case 2:
+        return (double)(*(std::get_if<2>(&vd)));
+    case 3:
+        return (double)(*(std::get_if<3>(&vd)));
+    }
+    return 0;
+};
+
+
+void assign(VariantData &vd, double val, int type_id){
+    switch(type_id){
+    case 0:
+        vd = (bool)val;
+    case 1:
+        vd = (int)val;
+    case 2:
+        vd = (float)val;
+    case 3:
+        vd = (double)val;
+    }
+}
+
 
 void Tensor::print(std::ostream &os, int index, int dim) const{
     if(dim == dimension){
@@ -329,26 +357,9 @@ Tensor add(Tensor &t1, Tensor &t2) throw(){
         else result = zeros_like(t2);
 
         for(size_t i = 0; i < result.get_total_size(); i++){
-            VariantData vd1;
-            VariantData vd2;
-            std::visit(Visitor(), vd1);
-
-            // if(tid_rst == 0){
-            //     result.data_ptr()[i] = std::get<bool>(t1.data_ptr()[i]) + std::get<bool>(t2.data_ptr()[i]);
-            // }
-            // else if(tid_rst == 1){
-            //     result.data_ptr()[i] = -1;
-            // }
-            // else if(tid_rst == 2){
-            //     result.data_ptr()[i] = -2;
-            // }
-            // else if(tid_rst == 3){
-            //     VariantData v1 = t1.data_ptr()[i];
-            //     std::cout << *(std::get_if<1>(&v1)) << std::endl;
-            //     // std::cout << std::get<3>(v1) << std::endl;
-
-            //     // result.data_ptr()[i] = std::get<3>(t1.data_ptr()[i]) + std::get<3>(t2.data_ptr()[i]);
-            // }
+            double v1 = promote(t1.data_ptr()[i]);
+            double v2 = promote(t2.data_ptr()[i]);
+            assign(result.data_ptr()[i], v1 + v2, tid_rst);
         }
 
         return result;
