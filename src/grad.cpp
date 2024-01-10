@@ -78,7 +78,8 @@ ts::Tensor &Node::gradTo(Node &that) throw(){}
 ts::Tensor &Variable::gradTo(Node &that) throw(){}
 
 ts::Tensor &Add_node::gradTo(Node &that) throw(){
-
+    if(&(*parents[0]) == &that || &(*parents[1]) == &that){
+    }
 }
 
 };
