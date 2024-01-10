@@ -1,6 +1,6 @@
 #include <iostream>
 #include "tensor.h"
-#include "autograd.h"
+#include "grad.h"
 
 using ts::Tensor, ts::zeros, ts::rand;
 
@@ -26,25 +26,13 @@ int main(){
     cout << ts1 << endl;
 
     Tensor ts2 = rand<double>(shape);
-    cout << "ts2(rand):" << endl;
     cout << ts2 << endl;
+    Tensor added = ts1 + ts2;
+    cout << *added.get_node_ptr() << endl;
 
-    Tensor add_1_2 = ts1 + ts2;
-    cout << "add_1_2" << endl;
-    cout << add_1_2 << endl;
+    auto added_node = dynamic_cast<grad::Add_node &>(*added.get_node_ptr());
+    cout << (typeid(added_node) == typeid(grad::Add_node)) << endl;
 
-    /*
-        Variable test
-    */
-
-    Variable var1{ts1};
-    Variable var2{ts2};
-    cout << "var1.value" << endl;
-    cout << var1 << endl;
-
-    Add_node added_node{var1 + var2};
-    cout << "added_ Node: " << endl;
-    cout << added_node << endl;
 
     return 0;
 }

@@ -15,6 +15,7 @@ using std::ostream, std::cin, std::cout, std::endl;
 class Node{
 protected:
     shared_ptr<ts::Tensor> value;
+    shared_ptr<Node> x;
     shared_ptr<Node> grad;
     vector<shared_ptr<Node>> parents;
     vector<shared_ptr<Node>> children;
@@ -33,18 +34,13 @@ public:
 
     Node(){
         value = nullptr;
+        x = nullptr;
         grad = nullptr;
         parents = {};
         children = {};
     };
 
-    void add_parent(Node par_node){
-        parents.push_back(make_shared<decltype(par_node)>(par_node));
-    };
-
-    virtual void eval();
-
-    ts::Tensor &getVal(){
+    ts::Tensor &getTensor(){
         if(value == nullptr) this->eval();
         return *value;
     };
@@ -67,10 +63,17 @@ public:
 
     friend ostream &operator<<(ostream &os, Node &node);
     friend Node operator+(Node &node1, Node &node2);
+
+    virtual void eval();
+    virtual ts::Tensor &gradTo(Node &that) throw();
 };
 
 class Variable : public Node{
 public:
+    Variable(ts::Tensor *ts){
+        value = make_shared<ts::Tensor>(*ts);
+    }
+
     Variable(ts::Tensor &ts){
         value = make_shared<ts::Tensor>(ts);
     };
@@ -78,6 +81,7 @@ public:
     Variable(){};
 
     virtual void eval(){};
+    virtual ts::Tensor &gradTo(Node &that) throw();
 
 };
 
@@ -86,7 +90,8 @@ public:
 */
 class Add_node : public Node{
 public:
-    Add_node(Node &a, Node &b) throw();
+    Add_node(shared_ptr<Node> node1, shared_ptr<Node> node2);
+    Add_node(Node &a, Node &b);
     Add_node(Node a){
         value = a.value_ptr();
         grad = a.grad_ptr();
@@ -94,9 +99,9 @@ public:
         children = a.children_ptr();
     }
 
-    void outterEval();
-
     virtual void eval() throw();
+    virtual ts::Tensor &gradTo(Node &that) throw();
+
 };
 
 

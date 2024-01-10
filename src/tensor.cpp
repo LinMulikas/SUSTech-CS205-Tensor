@@ -1,7 +1,7 @@
 #include <iostream>
 #include <vector>
 #include "tensor.h"
-#include "autograd.h"
+#include "grad.h"
 
 namespace ts{
 using std::vector;
@@ -138,6 +138,11 @@ std::ostream &operator<<(std::ostream &os, const Tensor &t){
     return os;
 }
 
+void Tensor::init_node(bool require_grad){
+    if(require_grad == true){
+        _node = make_shared<grad::Variable>(grad::Variable(this));
+    }
+}
 
 int Tensor::get_dimension() const{
     return dimension;
@@ -330,6 +335,10 @@ Tensor operator+(Tensor &ts1, Tensor &ts2){
     return add(ts1, ts2);
 }
 
+void Tensor::set_node(shared_ptr<grad::Node> node){
+    _node = node;
+}
+
 Tensor add(Tensor &t1, Tensor &t2) throw(){
     int *shape1 = t1.get_shape();
     int *shape2 = t2.get_shape();
@@ -361,7 +370,7 @@ Tensor add(Tensor &t1, Tensor &t2) throw(){
             double v2 = promote(t2.data_ptr()[i]);
             assign(result.data_ptr()[i], v1 + v2, tid_rst);
         }
-
+        result.set_node(make_shared<grad::Add_node>(grad::Add_node(t1.get_node_ptr(), t2.get_node_ptr())));
         return result;
     }
 }

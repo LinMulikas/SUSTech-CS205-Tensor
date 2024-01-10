@@ -8,13 +8,10 @@
 #include <random>
 #include <typeinfo>
 #include <initializer_list>
-#include "autograd.h"
+#include "grad.h"
 
 namespace ts{
 using VariantData = std::variant<bool, int, float, double>;
-
-
-
 
 using std::vector;
 using std::shared_ptr, std::make_shared;
@@ -72,9 +69,13 @@ private:
 public:
     // public autograd
     void set_require_grad(bool require);
-    void set_node(grad::Node node);
     void set_node(shared_ptr<grad::Node>);
-    void init_node();
+
+    void init_node(bool require);
+
+    shared_ptr<grad::Node> get_node_ptr(){
+        return _node;
+    }
 
     friend Tensor operator+(Tensor &ts1, Tensor &ts2);
 
@@ -95,6 +96,7 @@ public:
         t.data = t.data_shared.get();
         // default type float.
         t.dtype_id = 2;
+        t.init_node(global_require_grad);
         return t;
     }
 
@@ -113,7 +115,7 @@ public:
 
         // default type float.
         t.dtype_id = 2;
-
+        t.init_node(global_require_grad);
         return t;
     }
 
@@ -133,9 +135,9 @@ public:
         t.data_shared.reset(new VariantData[t.total_size]);
         t.data = t.data_shared.get();
 
-
         t.dtype_id = dtype_id_from<T>();
 
+        t.init_node(global_require_grad);
         return t;
     }
 
@@ -186,6 +188,7 @@ public:
         data = data_shared.get();
         VariantData *pointer = data;
         copyData(arr, pointer, data_shared.get() + total_size);
+        init_node(global_require_grad);
     }
 
     Tensor(int type_id);
@@ -195,20 +198,9 @@ public:
 
     friend std::ostream &operator<<(std::ostream &os, const Tensor &t);
 
-    template<typename T, size_t N>
-    static Tensor eye(int(&size)[N]){
-        Tensor t = init_with_shape(size);
-        t.data_shared.reset(new VariantData[t.total_size]);
-        t.data = t.data_shared.get();
-        for(int i = 0; i < t.total_size; i++){
-            t.data[i] = (T)0;
-        }
-        int min = t.shape[0] < t.shape[1] ? t.shape[0] : t.shape[1];
-        for(int i = 0; i < min; i++){
-            t.data[i * t.shape[1] + i] = (T)1;
-        }
-        return t;
-    }
+
+
+
 
     Tensor operator()(int idx);
     Tensor operator()(int idx, std::pair<int, int> range);
@@ -233,6 +225,37 @@ public:
         t.shape.reset(new int[t.dimension]);
         for(int i = 0; i < t.dimension; i++){
             t.shape[i] = shape[i];
+        }
+        t.init_node(global_require_grad);
+        return t;
+    }
+
+    template<typename T, size_t N>
+    static Tensor eye(int(&size)[N]){
+        Tensor t = init_with_shape(size);
+        t.data_shared.reset(new VariantData[t.total_size]);
+        t.data = t.data_shared.get();
+        for(int i = 0; i < t.total_size; i++){
+            t.data[i] = (T)0;
+        }
+        int min = t.shape[0] < t.shape[1] ? t.shape[0] : t.shape[1];
+        for(int i = 0; i < min; i++){
+            t.data[i * t.shape[1] + i] = (T)1;
+        }
+        return t;
+    }
+
+    template<typename T>
+    static Tensor eye(int *size, const int dim){
+        Tensor t = init_with_shape<T>(size, dim);
+        t.data_shared.reset(new VariantData[t.total_size]);
+        t.data = t.data_shared.get();
+        for(int i = 0; i < t.total_size; i++){
+            t.data[i] = (T)0;
+        }
+        int min = t.shape[0] < t.shape[1] ? t.shape[0] : t.shape[1];
+        for(int i = 0; i < min; i++){
+            t.data[i * t.shape[1] + i] = (T)1;
         }
         return t;
     }
@@ -330,7 +353,7 @@ static Tensor zeros(int *arr, const int dim){
 /*
     zeros_like with exact type.
 */
-static Tensor zeros_like(Tensor ts){
+static Tensor zeros_like(Tensor &ts){
     switch(ts.get_dtype_id()){
     case 0:
         return zeros<double>(ts.get_shape(), ts.get_dimension());
@@ -353,6 +376,46 @@ static Tensor ones(int(&size)[N]){
     }
     return t;
 }
+
+template<typename T>
+static Tensor ones(int *size, const int dim){
+    Tensor t = Tensor::init_with_shape<T>(size, dim);
+    for(int i = 0; i < t.get_total_size(); i++){
+        t.data_ptr()[i] = (T)1;
+    }
+    return t;
+}
+
+
+static Tensor ones_like(Tensor &ts){
+    switch(ts.get_dtype_id()){
+    case 0:
+        return ones<double>(ts.get_shape(), ts.get_dimension());
+    case 1:
+        return ones<int>(ts.get_shape(), ts.get_dimension());
+    case 2:
+        return ones<float>(ts.get_shape(), ts.get_dimension());
+    case 3:
+        return ones<double>(ts.get_shape(), ts.get_dimension());
+    }
+}
+
+
+static Tensor eye_like(Tensor &ts){
+    switch(ts.get_dtype_id()){
+    case 0:
+        return Tensor::eye<double>(ts.get_shape(), ts.get_dimension());
+    case 1:
+        return Tensor::eye<int>(ts.get_shape(), ts.get_dimension());
+    case 2:
+        return Tensor::eye<float>(ts.get_shape(), ts.get_dimension());
+    case 3:
+        return Tensor::eye<double>(ts.get_shape(), ts.get_dimension());
+    }
+}
+
+
+
 
 template<typename T, size_t N>
 static Tensor full(int(&size)[N], T value){
