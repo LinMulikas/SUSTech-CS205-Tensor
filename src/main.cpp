@@ -28,6 +28,5 @@ int main(){
     Tensor ts2 = rand<double>(shape);
     cout << ts2 << endl;
 
-    cout << grad::autograd(ts1.get_node_ptr(), ts)
-        return 0;
+    return 0;
 }
