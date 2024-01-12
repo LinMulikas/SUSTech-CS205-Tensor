@@ -27,14 +27,14 @@ VariantData Tensor::copy_tile(VariantData *src, Tensor *dst, int idx, int *src_s
 double promote(VariantData &vd){
     // std::cout << "promote" << std::endl;
     switch(vd.index()){
-    case 0:
-        return (double)(*(std::get_if<0>(&vd)));
-    case 1:
-        return (double)(*(std::get_if<1>(&vd)));
-    case 2:
-        return (double)(*(std::get_if<2>(&vd)));
-    case 3:
-        return (double)(*(std::get_if<3>(&vd)));
+        case 0:
+            return (double) (*(std::get_if<0>(&vd)));
+        case 1:
+            return (double) (*(std::get_if<1>(&vd)));
+        case 2:
+            return (double) (*(std::get_if<2>(&vd)));
+        case 3:
+            return (double) (*(std::get_if<3>(&vd)));
     }
     return 0;
 };
@@ -42,14 +42,14 @@ double promote(VariantData &vd){
 
 void assign(VariantData &vd, double val, int type_id){
     switch(type_id){
-    case 0:
-        vd = (bool)val;
-    case 1:
-        vd = (int)val;
-    case 2:
-        vd = (float)val;
-    case 3:
-        vd = (double)val;
+        case 0:
+            vd = (bool) val;
+        case 1:
+            vd = (int) val;
+        case 2:
+            vd = (float) val;
+        case 3:
+            vd = (double) val;
     }
 }
 
@@ -59,9 +59,8 @@ void Tensor::print(std::ostream &os, int index, int dim) const{
         // 打印单个元素
         std::visit([&os](auto &&arg){
             os << std::fixed << std::setprecision(4) << arg;
-                   }, data[index]);
-    }
-    else{
+        }, data[index]);
+    }else{
         // 打印开括号
         os << "[";
 
@@ -91,14 +90,14 @@ int *Tensor::size(){
 
 std::string Tensor::type_name(){
     switch(dtype_id){
-    case 0:
-        return "bool";
-    case 1:
-        return "int";
-    case 2:
-        return "float";
-    case 3:
-        return "double";
+        case 0:
+            return "bool";
+        case 1:
+            return "int";
+        case 2:
+            return "float";
+        case 3:
+            return "double";
     }
 }
 
@@ -138,10 +137,9 @@ std::ostream &operator<<(std::ostream &os, const Tensor &t){
     return os;
 }
 
-void Tensor::init_node(bool require_grad){
-    if(require_grad == true){
-        _node = make_shared<grad::Variable>(grad::Variable(this));
-    }
+void Tensor::init_node(){
+    if(_node == nullptr)
+        _node = make_shared<grad::Variable>(grad::Variable(*this));
 }
 
 int Tensor::get_dimension() const{
@@ -175,15 +173,13 @@ Tensor Tensor::operator()(int idx){
     Tensor t = Tensor();
     if(dimension == 1){
         t.dimension = 1;
-    }
-    else t.dimension = dimension - 1;
+    }else t.dimension = dimension - 1;
     t.shape.reset(new int[t.dimension]);
 
     for(int i = 0; i < t.dimension; i++){
         if(dimension == 1){
             t.shape[i] = 1;
-        }
-        else{
+        }else{
             t.shape[i] = shape[i + 1];
         }
     }
@@ -202,8 +198,7 @@ Tensor Tensor::operator()(int idx, std::pair<int, int> range){
     for(int i = 1; i < t.dimension; i++){
         t.shape[i] = shape[i + 1];
         t.total_size *= shape[i + 1];
-    }
-    ;
+    };
     t.data = shape[0] * idx + data + range.first;
     return t;
 }
@@ -222,6 +217,9 @@ int Tensor::cal_stride(int dim, int *shape){
     return stride;
 }
 
+Tensor ts::transpose(Tensor tensor, int dim1, int dim2){
+    return tensor.transpose(dim1, dim2);
+}
 
 Tensor Tensor::transpose(int dim1, int dim2){
     // 检查维度是否有效
@@ -321,10 +319,6 @@ Tensor Tensor::permute(int dim[]){
     return t;
 }
 
-Tensor transpose(Tensor tensor, int dim1, int dim2){
-    return tensor.transpose(dim1, dim2);
-}
-
 Tensor permute(Tensor tensor, int dim[]){
     return tensor.permute(dim);
 }
@@ -362,8 +356,7 @@ Tensor add(Tensor &t1, Tensor &t2) throw(){
                 throw std::invalid_argument("The input tensors need to be same shape.");
             }
         }
-    }
-    else{
+    }else{
         // Type promote
         Tensor result;
 
@@ -379,7 +372,7 @@ Tensor add(Tensor &t1, Tensor &t2) throw(){
             double v2 = promote(t2.data_ptr()[i]);
             assign(result.data_ptr()[i], v1 + v2, tid_rst);
         }
-        result.set_node(make_shared<grad::Add_node>(grad::Add_node(t1.get_node_ptr(), t2.get_node_ptr())));
+        result.set_node(make_shared<grad::Add>(grad::Add(t1.node_ptr(), t2.node_ptr())));
         return result;
     }
 }
@@ -398,8 +391,7 @@ Tensor sub(Tensor &t1, Tensor &t2) throw(){
                 throw std::invalid_argument("The input tensors need to be same shape.");
             }
         }
-    }
-    else{
+    }else{
         // Type promote
         Tensor result;
 
@@ -415,10 +407,11 @@ Tensor sub(Tensor &t1, Tensor &t2) throw(){
             double v2 = promote(t2.data_ptr()[i]);
             assign(result.data_ptr()[i], v1 - v2, tid_rst);
         }
-        result.set_node(make_shared<grad::Add_node>(grad::Add_node(t1.get_node_ptr(), t2.get_node_ptr())));
+        result.set_node(make_shared<grad::Add>(grad::Add(t1.node_ptr(), t2.node_ptr())));
         return result;
     }
 }
+
 Tensor mul_pt(Tensor &t1, Tensor &t2) throw(){
     int *shape1 = t1.get_shape();
     int *shape2 = t2.get_shape();
@@ -433,8 +426,7 @@ Tensor mul_pt(Tensor &t1, Tensor &t2) throw(){
                 throw std::invalid_argument("The input tensors need to be same shape.");
             }
         }
-    }
-    else{
+    }else{
         // Type promote
         Tensor result;
 
@@ -450,7 +442,7 @@ Tensor mul_pt(Tensor &t1, Tensor &t2) throw(){
             double v2 = promote(t2.data_ptr()[i]);
             assign(result.data_ptr()[i], v1 * v2, tid_rst);
         }
-        result.set_node(make_shared<grad::Add_node>(grad::Add_node(t1.get_node_ptr(), t2.get_node_ptr())));
+        result.set_node(make_shared<grad::Add>(grad::Add(t1.node_ptr(), t2.node_ptr())));
         return result;
     }
 }

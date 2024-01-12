@@ -1,5 +1,6 @@
 #include "tensor.h"
 #include "grad.h"
+#include <type_traits>
 
 namespace grad{
 using std::make_shared, std::shared_ptr, std::vector;
@@ -8,7 +9,7 @@ using std::ostream, std::cin, std::cout, std::endl;
 
 Node operator+(Node &node1, Node &node2){
     // cout << "Test operator+" << endl;
-    return Add_node(node1, node2);
+    return Add(node1, node2);
 }
 
 ostream &operator<<(ostream &os, Node &node){
@@ -24,26 +25,27 @@ ostream &operator<<(ostream &os, Node &node){
 */
 void Node::eval(){}
 
+
 /*
-    Add_node
+    Add
 */
 
-Add_node::Add_node(shared_ptr<Node> node1, shared_ptr<Node> node2){
+Add::Add(shared_ptr<Node> node1, shared_ptr<Node> node2){
     parents.push_back(node1);
     parents.push_back(node2);
 }
 
-Add_node::Add_node(Node &node1, Node &node2){
-    // std::cout << "Test Add_node constructor." << std::endl;
+Add::Add(Node &node1, Node &node2){
+    // std::cout << "Test Add constructor." << std::endl;
     parents.push_back(make_shared<Node>(node1));
     parents.push_back(make_shared<Node>(node2));
 }
 
-// Add_node::eval
-void Add_node::eval() throw(){
-    // cout << "test Add_node::eval" << endl;
+// Add::eval
+void Add::eval() throw(){
+    // cout << "test Add::eval" << endl;
     if(value == nullptr){
-        for(shared_ptr<Node> node : parents){
+        for(shared_ptr<Node> node: parents){
             node->eval();
         }
         // The parents node must be size 2.
@@ -54,37 +56,34 @@ void Add_node::eval() throw(){
 }
 
 // Autograd
+ts::Tensor autograd(ts::Tensor &input, ts::Tensor &output) throw(){
+    input.init_node();
+    output.init_node();
+    return autograd(input.node(), output.node());
+}
 
-ts::Tensor &autograd(grad::Node &x, grad::Node &y) throw(){
-    if(typeid(x) == typeid(Node) || typeid(y) == typeid(Node)){
-        throw std::invalid_argument("The input, output need to be Variable.");
-    }
-    else{
-        if(typeid(x) == typeid(Variable)
-           && typeid(y) == typeid(Variable)){
-            if(&x != &y){
-                throw std::invalid_argument("The input, output has no relationship.");
-            }
-            else{
-                // TODO: cat two variable and return.
-            }
-        }
-    }
 
+ts::Tensor autograd(grad::Node &x, grad::Node &y) throw(){
+    return y.gradTo(x);
 }
 // Autograd.
 
 
-ts::Tensor &Node::gradTo(Node &that) throw(){}
+ts::Tensor Node::gradTo(Node &that) throw(){
+    return ts::zeros_like(*that.value_ptr());
+}
 
-ts::Tensor &Variable::gradTo(Node &that) throw(){
-    if(&that != this) throw std::invalid_argument("The input, output has no releationship.");
+ts::Tensor Variable::gradTo(Node &that) throw(){
+    if(&that != this) return ts::zeros_like(*that.value_ptr());
     if(&that == this) return *value;
 }
 
-ts::Tensor &Add_node::gradTo(Node &that) throw(){
-    if(&(*parents[0]) == &that || &(*parents[1]) == &that){
-    }
+ts::Tensor Add::gradTo(Node &that) throw(){
+    ts::Tensor lhs = parents[0]->gradTo(that);
+    ts::Tensor rhs = parents[1]->gradTo(that);
+//    cout << lhs << endl;
+//    cout << rhs << endl;
+    return ts::add(lhs, rhs);
 }
 
 };
