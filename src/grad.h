@@ -105,5 +105,6 @@ public:
 };
 
 
+ts::Tensor &autograd(Node &in, Node &out) throw();
 };
 

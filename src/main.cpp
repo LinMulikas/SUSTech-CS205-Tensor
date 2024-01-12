@@ -27,12 +27,7 @@ int main(){
 
     Tensor ts2 = rand<double>(shape);
     cout << ts2 << endl;
-    Tensor added = ts1 + ts2;
-    cout << *added.get_node_ptr() << endl;
 
-    auto added_node = dynamic_cast<grad::Add_node &>(*added.get_node_ptr());
-    cout << (typeid(added_node) == typeid(grad::Add_node)) << endl;
-
-
-    return 0;
+    cout << grad::autograd(ts1.get_node_ptr(), ts)
+        return 0;
 }

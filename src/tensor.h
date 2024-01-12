@@ -78,6 +78,8 @@ public:
     }
 
     friend Tensor operator+(Tensor &ts1, Tensor &ts2);
+    friend Tensor operator-(Tensor &ts1, Tensor &ts2);
+    friend Tensor operator*(Tensor &ts1, Tensor &ts2);
 
     static VariantData copy_tile(VariantData *src, Tensor *dst, int idx, int *src_shape, int dim);
 
@@ -297,6 +299,8 @@ public:
 
 // Math operators
 static Tensor add(Tensor &t1, Tensor &t2) throw();
+static Tensor sub(Tensor &t1, Tensor &t2) throw();
+static Tensor mul_pt(Tensor &t1, Tensor &t2) throw();
 
 template<typename T, size_t N>
 static Tensor rand(int(&size)[N]){

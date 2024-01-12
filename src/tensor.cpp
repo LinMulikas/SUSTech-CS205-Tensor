@@ -335,6 +335,15 @@ Tensor operator+(Tensor &ts1, Tensor &ts2){
     return add(ts1, ts2);
 }
 
+Tensor operator-(Tensor &ts1, Tensor &ts2){
+    return sub(ts1, ts2);
+}
+
+Tensor operator*(Tensor &ts1, Tensor &ts2){
+    return mul_pt(ts1, ts2);
+}
+
+
 void Tensor::set_node(shared_ptr<grad::Node> node){
     _node = node;
 }
@@ -375,5 +384,75 @@ Tensor add(Tensor &t1, Tensor &t2) throw(){
     }
 }
 
+Tensor sub(Tensor &t1, Tensor &t2) throw(){
+    int *shape1 = t1.get_shape();
+    int *shape2 = t2.get_shape();
+    size_t dim1 = sizeof(shape1) / sizeof(shape1[0]);
+    size_t dim2 = sizeof(shape2) / sizeof(shape2[0]);
+
+    // std::cout << dim1 << " " << dim2 << std::endl;
+    if(dim1 != dim2){
+        throw std::invalid_argument("The input tensors need to be same shape.");
+        for(int i = 0; i < dim1; i++){
+            if(shape1[i] != shape2[i]){
+                throw std::invalid_argument("The input tensors need to be same shape.");
+            }
+        }
+    }
+    else{
+        // Type promote
+        Tensor result;
+
+        int tid_1 = t1.get_dtype_id();
+        int tid_2 = t2.get_dtype_id();
+        int tid_rst = std::max(tid_1, tid_2);
+
+        if(tid_rst == tid_1)result = zeros_like(t1);
+        else result = zeros_like(t2);
+
+        for(size_t i = 0; i < result.get_total_size(); i++){
+            double v1 = promote(t1.data_ptr()[i]);
+            double v2 = promote(t2.data_ptr()[i]);
+            assign(result.data_ptr()[i], v1 - v2, tid_rst);
+        }
+        result.set_node(make_shared<grad::Add_node>(grad::Add_node(t1.get_node_ptr(), t2.get_node_ptr())));
+        return result;
+    }
+}
+Tensor mul_pt(Tensor &t1, Tensor &t2) throw(){
+    int *shape1 = t1.get_shape();
+    int *shape2 = t2.get_shape();
+    size_t dim1 = sizeof(shape1) / sizeof(shape1[0]);
+    size_t dim2 = sizeof(shape2) / sizeof(shape2[0]);
+
+    // std::cout << dim1 << " " << dim2 << std::endl;
+    if(dim1 != dim2){
+        throw std::invalid_argument("The input tensors need to be same shape.");
+        for(int i = 0; i < dim1; i++){
+            if(shape1[i] != shape2[i]){
+                throw std::invalid_argument("The input tensors need to be same shape.");
+            }
+        }
+    }
+    else{
+        // Type promote
+        Tensor result;
+
+        int tid_1 = t1.get_dtype_id();
+        int tid_2 = t2.get_dtype_id();
+        int tid_rst = std::max(tid_1, tid_2);
+
+        if(tid_rst == tid_1)result = zeros_like(t1);
+        else result = zeros_like(t2);
+
+        for(size_t i = 0; i < result.get_total_size(); i++){
+            double v1 = promote(t1.data_ptr()[i]);
+            double v2 = promote(t2.data_ptr()[i]);
+            assign(result.data_ptr()[i], v1 * v2, tid_rst);
+        }
+        result.set_node(make_shared<grad::Add_node>(grad::Add_node(t1.get_node_ptr(), t2.get_node_ptr())));
+        return result;
+    }
+}
 
 }

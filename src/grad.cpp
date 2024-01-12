@@ -72,10 +72,15 @@ ts::Tensor &autograd(grad::Node &x, grad::Node &y) throw(){
     }
 
 }
-// Jacobi 
+// Autograd.
+
+
 ts::Tensor &Node::gradTo(Node &that) throw(){}
 
-ts::Tensor &Variable::gradTo(Node &that) throw(){}
+ts::Tensor &Variable::gradTo(Node &that) throw(){
+    if(&that != this) throw std::invalid_argument("The input, output has no releationship.");
+    if(&that == this) return *value;
+}
 
 ts::Tensor &Add_node::gradTo(Node &that) throw(){
     if(&(*parents[0]) == &that || &(*parents[1]) == &that){
