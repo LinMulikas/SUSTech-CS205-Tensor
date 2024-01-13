@@ -27,14 +27,14 @@ VariantData Tensor::copy_tile(VariantData *src, Tensor *dst, int idx, int *src_s
 double promote(VariantData &vd){
     // std::cout << "promote" << std::endl;
     switch(vd.index()){
-        case 0:
-            return (double) (*(std::get_if<0>(&vd)));
-        case 1:
-            return (double) (*(std::get_if<1>(&vd)));
-        case 2:
-            return (double) (*(std::get_if<2>(&vd)));
-        case 3:
-            return (double) (*(std::get_if<3>(&vd)));
+    case 0:
+        return (double)(*(std::get_if<0>(&vd)));
+    case 1:
+        return (double)(*(std::get_if<1>(&vd)));
+    case 2:
+        return (double)(*(std::get_if<2>(&vd)));
+    case 3:
+        return (double)(*(std::get_if<3>(&vd)));
     }
     return 0;
 };
@@ -42,14 +42,14 @@ double promote(VariantData &vd){
 
 void assign(VariantData &vd, double val, int type_id){
     switch(type_id){
-        case 0:
-            vd = (bool) val;
-        case 1:
-            vd = (int) val;
-        case 2:
-            vd = (float) val;
-        case 3:
-            vd = (double) val;
+    case 0:
+        vd = (bool)val;
+    case 1:
+        vd = (int)val;
+    case 2:
+        vd = (float)val;
+    case 3:
+        vd = (double)val;
     }
 }
 
@@ -59,8 +59,9 @@ void Tensor::print(std::ostream &os, int index, int dim) const{
         // 打印单个元素
         std::visit([&os](auto &&arg){
             os << std::fixed << std::setprecision(4) << arg;
-        }, data[index]);
-    }else{
+                   }, data[index]);
+    }
+    else{
         // 打印开括号
         os << "[";
 
@@ -90,14 +91,14 @@ int *Tensor::size(){
 
 std::string Tensor::type_name(){
     switch(dtype_id){
-        case 0:
-            return "bool";
-        case 1:
-            return "int";
-        case 2:
-            return "float";
-        case 3:
-            return "double";
+    case 0:
+        return "bool";
+    case 1:
+        return "int";
+    case 2:
+        return "float";
+    case 3:
+        return "double";
     }
 }
 
@@ -137,9 +138,10 @@ std::ostream &operator<<(std::ostream &os, const Tensor &t){
     return os;
 }
 
-void Tensor::init_node(){
-    if(_node == nullptr)
-        _node = make_shared<grad::Variable>(grad::Variable(*this));
+void Tensor::init_node(bool require_grad){
+    if(require_grad == true){
+        _node = make_shared<grad::Variable>(grad::Variable(this));
+    }
 }
 
 int Tensor::get_dimension() const{
@@ -173,13 +175,15 @@ Tensor Tensor::operator()(int idx){
     Tensor t = Tensor();
     if(dimension == 1){
         t.dimension = 1;
-    }else t.dimension = dimension - 1;
+    }
+    else t.dimension = dimension - 1;
     t.shape.reset(new int[t.dimension]);
 
     for(int i = 0; i < t.dimension; i++){
         if(dimension == 1){
             t.shape[i] = 1;
-        }else{
+        }
+        else{
             t.shape[i] = shape[i + 1];
         }
     }
@@ -198,7 +202,8 @@ Tensor Tensor::operator()(int idx, std::pair<int, int> range){
     for(int i = 1; i < t.dimension; i++){
         t.shape[i] = shape[i + 1];
         t.total_size *= shape[i + 1];
-    };
+    }
+    ;
     t.data = shape[0] * idx + data + range.first;
     return t;
 }
@@ -217,9 +222,6 @@ int Tensor::cal_stride(int dim, int *shape){
     return stride;
 }
 
-Tensor ts::transpose(Tensor tensor, int dim1, int dim2){
-    return tensor.transpose(dim1, dim2);
-}
 
 Tensor Tensor::transpose(int dim1, int dim2){
     // 检查维度是否有效
@@ -319,12 +321,42 @@ Tensor Tensor::permute(int dim[]){
     return t;
 }
 
+
+Tensor transpose(Tensor tensor, int dim1, int dim2){
+    return tensor.transpose(dim1, dim2);
+}
+
 Tensor permute(Tensor tensor, int dim[]){
     return tensor.permute(dim);
 }
 
 Tensor sum(Tensor &ts, int dim);
+//mathoperator-begin
 
+Tensor Tensor::add(Tensor &ts){
+    return ts::add(*(this),ts);
+}
+Tensor Tensor::sub(Tensor &ts){
+    return ts::sub(*(this),ts);
+}
+Tensor Tensor::mul_pt(Tensor &ts){
+    return ts::mul_pt(*(this),ts);
+}
+Tensor Tensor::div(Tensor &ts){
+    return ts::div(*(this),ts);
+}
+Tensor Tensor::add(VariantData ts){
+    return ts::add(*(this),ts);
+}
+Tensor Tensor::sub(VariantData ts){
+    return   ts::sub(*(this),ts);
+}
+Tensor Tensor::mul_pt(VariantData ts){
+    return ts::mul_pt(*(this),ts);
+}
+Tensor Tensor::div(VariantData ts){
+    return ts::div(*(this),ts);
+}
 Tensor operator+(Tensor &ts1, Tensor &ts2){
     return add(ts1, ts2);
 }
@@ -332,23 +364,27 @@ Tensor operator+(Tensor &ts1, Tensor &ts2){
 Tensor operator-(Tensor &ts1, Tensor &ts2){
     return sub(ts1, ts2);
 }
+Tensor operator-(Tensor &ts1,VariantData ts2){
+    return sub(ts1,ts2);
+}
 
 Tensor operator*(Tensor &ts1, Tensor &ts2){
     return mul_pt(ts1, ts2);
 }
+Tensor operator*(Tensor &ts1,VariantData vd){
+    return mul_pt(ts1,vd);
+}
+
 
 
 void Tensor::set_node(shared_ptr<grad::Node> node){
     _node = node;
 }
-
-Tensor add(Tensor &t1, Tensor &t2) throw(){
-    int *shape1 = t1.get_shape();
+void is_shape_valid(Tensor &t1,Tensor &t2) throw(){
+  int *shape1 = t1.get_shape();
     int *shape2 = t2.get_shape();
-    size_t dim1 = sizeof(shape1) / sizeof(shape1[0]);
-    size_t dim2 = sizeof(shape2) / sizeof(shape2[0]);
-
-    // std::cout << dim1 << " " << dim2 << std::endl;
+    size_t dim1 = t1.get_dimension();
+    size_t dim2 = t2.get_dimension();
     if(dim1 != dim2){
         throw std::invalid_argument("The input tensors need to be same shape.");
         for(int i = 0; i < dim1; i++){
@@ -356,7 +392,11 @@ Tensor add(Tensor &t1, Tensor &t2) throw(){
                 throw std::invalid_argument("The input tensors need to be same shape.");
             }
         }
-    }else{
+    }
+}
+Tensor add(Tensor &t1, Tensor &t2) throw(){
+    is_shape_valid(t1,t2);
+    
         // Type promote
         Tensor result;
 
@@ -372,26 +412,41 @@ Tensor add(Tensor &t1, Tensor &t2) throw(){
             double v2 = promote(t2.data_ptr()[i]);
             assign(result.data_ptr()[i], v1 + v2, tid_rst);
         }
-        result.set_node(make_shared<grad::Add>(grad::Add(t1.node_ptr(), t2.node_ptr())));
+        result.set_node(make_shared<grad::Add_node>(grad::Add_node(t1.get_node_ptr(), t2.get_node_ptr())));
         return result;
+    
+}
+Tensor add(Tensor &t1,VariantData vd)throw(){
+    Tensor t2=zeros_like(t1);
+    for(size_t i=0;i<t1.get_total_size();i++)
+    {
+        t2.data_ptr()[i]=vd;
     }
+    return add(t1,t2);
+}
+Tensor sub(Tensor &t1,VariantData vd)throw(){
+    Tensor t2=zeros_like(t1);
+    for(size_t i=0;i<t1.get_total_size();i++)
+    {
+        t2.data_ptr()[i]=vd;
+    }
+
+    return sub(t1,t2);
+}
+Tensor mul_pt(Tensor &t1,VariantData vd)throw(){
+    Tensor t2=zeros_like(t1);
+    for(size_t i=0;i<t1.get_total_size();i++)
+    {
+        t2.data_ptr()[i]=vd;
+    }
+
+    return mul_pt(t1,t2);
 }
 
-Tensor sub(Tensor &t1, Tensor &t2) throw(){
-    int *shape1 = t1.get_shape();
-    int *shape2 = t2.get_shape();
-    size_t dim1 = sizeof(shape1) / sizeof(shape1[0]);
-    size_t dim2 = sizeof(shape2) / sizeof(shape2[0]);
 
-    // std::cout << dim1 << " " << dim2 << std::endl;
-    if(dim1 != dim2){
-        throw std::invalid_argument("The input tensors need to be same shape.");
-        for(int i = 0; i < dim1; i++){
-            if(shape1[i] != shape2[i]){
-                throw std::invalid_argument("The input tensors need to be same shape.");
-            }
-        }
-    }else{
+Tensor sub(Tensor &t1, Tensor &t2) throw(){
+    is_shape_valid(t1,t2);
+
         // Type promote
         Tensor result;
 
@@ -407,26 +462,12 @@ Tensor sub(Tensor &t1, Tensor &t2) throw(){
             double v2 = promote(t2.data_ptr()[i]);
             assign(result.data_ptr()[i], v1 - v2, tid_rst);
         }
-        result.set_node(make_shared<grad::Add>(grad::Add(t1.node_ptr(), t2.node_ptr())));
+        result.set_node(make_shared<grad::Add_node>(grad::Add_node(t1.get_node_ptr(), t2.get_node_ptr())));
         return result;
-    }
+    
 }
-
 Tensor mul_pt(Tensor &t1, Tensor &t2) throw(){
-    int *shape1 = t1.get_shape();
-    int *shape2 = t2.get_shape();
-    size_t dim1 = sizeof(shape1) / sizeof(shape1[0]);
-    size_t dim2 = sizeof(shape2) / sizeof(shape2[0]);
-
-    // std::cout << dim1 << " " << dim2 << std::endl;
-    if(dim1 != dim2){
-        throw std::invalid_argument("The input tensors need to be same shape.");
-        for(int i = 0; i < dim1; i++){
-            if(shape1[i] != shape2[i]){
-                throw std::invalid_argument("The input tensors need to be same shape.");
-            }
-        }
-    }else{
+   is_shape_valid(t1,t2);
         // Type promote
         Tensor result;
 
@@ -442,9 +483,190 @@ Tensor mul_pt(Tensor &t1, Tensor &t2) throw(){
             double v2 = promote(t2.data_ptr()[i]);
             assign(result.data_ptr()[i], v1 * v2, tid_rst);
         }
-        result.set_node(make_shared<grad::Add>(grad::Add(t1.node_ptr(), t2.node_ptr())));
+        result.set_node(make_shared<grad::Add_node>(grad::Add_node(t1.get_node_ptr(), t2.get_node_ptr())));
         return result;
-    }
+    
 }
+
+Tensor div(Tensor &t1, Tensor &t2) throw(){
+    is_shape_valid(t1,t2);
+        // Type promote
+        Tensor result;
+
+        int tid_1 = t1.get_dtype_id();
+        int tid_2 = t2.get_dtype_id();
+        int tid_rst = std::max(tid_1, tid_2);
+
+        if(tid_rst == tid_1)result = zeros_like(t1);
+        else result = zeros_like(t2);
+
+        for(size_t i = 0; i < result.get_total_size(); i++){
+            double v1 = promote(t1.data_ptr()[i]);
+            double v2 = promote(t2.data_ptr()[i]);
+            if(v2==0) throw std::invalid_argument("The divider is not valid.");
+            assign(result.data_ptr()[i], v1 / v2, tid_rst);
+        }
+        result.set_node(make_shared<grad::Add_node>(grad::Add_node(t1.get_node_ptr(), t2.get_node_ptr())));
+        return result;
+    
+}
+
+Tensor div(Tensor &t1,VariantData vd)throw(){
+    Tensor t2=zeros_like(t1);
+    for(size_t i=0;i<t1.get_total_size();i++)
+    {
+        t2.data_ptr()[i]=vd;
+    }
+
+    return div(t1,t2);
+} 
+//math-operator end
+
+//comparator-begin
+Tensor Tensor::eq(Tensor &t2) throw(){
+    is_shape_valid(*(this),t2);
+    Tensor result = zeros<bool>(t2.get_shape(), t2.get_dimension());
+    for(size_t i=0;i<this->total_size;i++)
+    {
+            double v1 = promote(this->data_ptr()[i]);
+            double v2 = promote(t2.data_ptr()[i]);
+            if(v1==v2)
+            {
+                result.data_ptr()[i]=true;
+            }else{
+                result.data_ptr()[i]=false;
+            }
+            
+    }
+    return result;
+
+}
+Tensor Tensor::ne(Tensor &t2) throw(){
+    is_shape_valid(*(this),t2);
+    Tensor result = zeros<bool>(t2.get_shape(), t2.get_dimension());
+    for(size_t i=0;i<this->total_size;i++)
+    {
+            double v1 = promote(this->data_ptr()[i]);
+            double v2 = promote(t2.data_ptr()[i]);
+            if(v1!=v2)
+            {
+                result.data_ptr()[i]=true;
+            }else{
+                result.data_ptr()[i]=false;
+            }
+            
+    }
+    return result;
+}
+Tensor Tensor::le(Tensor &t2) throw(){
+    is_shape_valid(*(this),t2);
+     Tensor result = zeros<bool>(t2.get_shape(), t2.get_dimension());
+    for(size_t i=0;i<this->total_size;i++)
+    {
+            double v1 = promote(this->data_ptr()[i]);
+            double v2 = promote(t2.data_ptr()[i]);
+            if(v1<=v2)
+            {
+                result.data_ptr()[i]=true;
+            }else{
+                result.data_ptr()[i]=false;
+            }
+            
+    }
+    return result;
+
+}
+Tensor Tensor::lt(Tensor &t2) throw(){
+    is_shape_valid(*(this),t2);
+     Tensor result = zeros<bool>(t2.get_shape(), t2.get_dimension());
+    for(size_t i=0;i<this->total_size;i++)
+    {
+            double v1 = promote(this->data_ptr()[i]);
+            double v2 = promote(t2.data_ptr()[i]);
+            if(v1<v2)
+            {
+                result.data_ptr()[i]=true;
+            }else{
+                result.data_ptr()[i]=false;
+            }
+            
+    }
+    return result;
+}
+Tensor Tensor::ge(Tensor &t2) throw(){
+    is_shape_valid(*(this),t2);
+    Tensor result = zeros<bool>(t2.get_shape(), t2.get_dimension());
+    for(size_t i=0;i<this->total_size;i++)
+    {
+            double v1 = promote(this->data_ptr()[i]);
+            double v2 = promote(t2.data_ptr()[i]);
+            if(v1>=v2)
+            {
+                result.data_ptr()[i]=true;
+            }else{
+                result.data_ptr()[i]=false;
+            }
+            
+    }
+    return result;
+
+}
+Tensor Tensor::gt(Tensor &t2) throw(){
+    is_shape_valid(*(this),t2);
+    Tensor result = zeros<bool>(t2.get_shape(), t2.get_dimension());
+    for(size_t i=0;i<this->total_size;i++)
+    {
+            double v1 = promote(this->data_ptr()[i]);
+            double v2 = promote(t2.data_ptr()[i]);
+            if(v1>v2)
+            {
+                result.data_ptr()[i]=true;
+            }else{
+                result.data_ptr()[i]=false;
+            }
+            
+    }
+    return result;
+
+}
+
+Tensor eq(Tensor &t1,Tensor &t2) throw(){
+     return t1.eq(t2);
+}
+Tensor ne(Tensor &t1,Tensor &t2) throw(){
+    return t1.ne(t2);
+}
+Tensor ge(Tensor &t1,Tensor &t2) throw(){
+    return t1.ge(t2);
+}
+Tensor gt(Tensor &t1,Tensor &t2) throw(){
+    return t1.gt(t2);
+}
+Tensor le(Tensor &t1,Tensor &t2) throw(){
+    return t1.le(t2);
+}
+Tensor lt(Tensor &t1,Tensor &t2) throw(){
+    return t1.lt(t2);
+}
+
+
+Tensor operator<(Tensor& t1,Tensor &t2) {
+      return lt(t1,t2);
+}
+Tensor operator<=(Tensor& t1,Tensor &t2) {
+    return le(t1,t2);
+    
+}Tensor operator==(Tensor& t1,Tensor &t2){
+    return eq(t1,t2);
+    
+}Tensor operator>(Tensor& t1,Tensor &t2) {
+    return gt(t1,t2);
+}Tensor operator>=(Tensor& t1,Tensor &t2){
+    return ge(t1,t2);
+}Tensor operator!=(Tensor& t1,Tensor &t2){
+    return ne(t1,t2);
+}
+//comparator-end
+
 
 }
