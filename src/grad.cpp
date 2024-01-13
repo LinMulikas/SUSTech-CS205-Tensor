@@ -57,15 +57,13 @@ void Add::eval() throw(){
 
 // Autograd
 ts::Tensor autograd(ts::Tensor &input, ts::Tensor &output) throw(){
-    input.init_node();
-    output.init_node();
-    return autograd(input.node(), output.node());
+    if(input.node_ptr() == nullptr)
+        input.init_node();
+    if(output.node_ptr() == nullptr)
+        output.init_node();
+    return output.node().gradTo(input.node());
 }
 
-
-ts::Tensor autograd(grad::Node &x, grad::Node &y) throw(){
-    return y.gradTo(x);
-}
 // Autograd.
 
 
@@ -81,8 +79,6 @@ ts::Tensor Variable::gradTo(Node &that) throw(){
 ts::Tensor Add::gradTo(Node &that) throw(){
     ts::Tensor lhs = parents[0]->gradTo(that);
     ts::Tensor rhs = parents[1]->gradTo(that);
-//    cout << lhs << endl;
-//    cout << rhs << endl;
     return ts::add(lhs, rhs);
 }
 

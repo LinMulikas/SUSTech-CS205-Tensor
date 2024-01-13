@@ -1,4 +1,5 @@
 #pragma once
+
 #include <variant>
 #include <iostream>
 #include <type_traits>
@@ -39,7 +40,7 @@ private:
     int dtype_id;
 
     // Autograd
-    bool _require_grad;
+    bool _require_grad = true;
     shared_ptr<grad::Node> _node;
 
     template<typename ArrayType, size_t N>
@@ -47,8 +48,7 @@ private:
         for(size_t i = 0; i < N; ++i){
             if constexpr(std::is_array<ArrayType>::value){
                 copyData(arr[i], dest, destEnd);
-            }
-            else{
+            }else{
                 *dest = arr[i];
                 if(dest < destEnd)
                     dest++;
@@ -68,31 +68,46 @@ private:
 
 public:
     // public autograd
-    void set_require_grad(bool require);
     void set_node(shared_ptr<grad::Node>);
 
-    void init_node(bool require);
+    void init_node();
 
-    shared_ptr<grad::Node> get_node_ptr(){
+    grad::Node &node(){
+        return *_node;
+    }
+
+    shared_ptr<grad::Node> node_ptr(){
         return _node;
     }
 
-   Tensor add(Tensor &t2);
-   Tensor add(VariantData vd);
-   Tensor sub(Tensor &t2);
-   Tensor sub(VariantData vd);
-   Tensor mul_pt(Tensor &t2);
-   Tensor mul_pt(VariantData vd);
-   Tensor div(Tensor &t2);
-   Tensor div(VariantData vd);
+    Tensor add(Tensor &t2);
 
-   //comparator
-   Tensor eq(Tensor &t2);
-   Tensor ne(Tensor &t2);
-   Tensor ge(Tensor &t2);
-   Tensor gt(Tensor &t2);
-   Tensor le(Tensor &t2);
-   Tensor lt(Tensor &t2);
+    Tensor add(VariantData &vd);
+
+    Tensor sub(Tensor &t2);
+
+    Tensor sub(VariantData vd);
+
+    Tensor mul_pt(Tensor &t2);
+
+    Tensor mul_pt(VariantData vd);
+
+    Tensor div(Tensor &t2);
+
+    Tensor div(VariantData vd);
+
+    //comparator
+    Tensor eq(Tensor &t2) throw();
+
+    Tensor ne(Tensor &t2) throw();
+
+    Tensor ge(Tensor &t2) throw();
+
+    Tensor gt(Tensor &t2) throw();
+
+    Tensor le(Tensor &t2) throw();
+
+    Tensor lt(Tensor &t2) throw();
 
 
     static VariantData copy_tile(VariantData *src, Tensor *dst, int idx, int *src_shape, int dim);
@@ -112,7 +127,7 @@ public:
         t.data = t.data_shared.get();
         // default type float.
         t.dtype_id = 2;
-        t.init_node(global_require_grad);
+        t.init_node();
         return t;
     }
 
@@ -131,7 +146,7 @@ public:
 
         // default type float.
         t.dtype_id = 2;
-        t.init_node(global_require_grad);
+        t.init_node();
         return t;
     }
 
@@ -153,7 +168,7 @@ public:
 
         t.dtype_id = dtype_id_from<T>();
 
-        t.init_node(global_require_grad);
+        t.init_node();
         return t;
     }
 
@@ -204,10 +219,11 @@ public:
         data = data_shared.get();
         VariantData *pointer = data;
         copyData(arr, pointer, data_shared.get() + total_size);
-        init_node(global_require_grad);
+        init_node();
     }
 
     Tensor(int type_id);
+
     Tensor();
 
     int cal_stride(int dim, int *shape);
@@ -215,10 +231,8 @@ public:
     friend std::ostream &operator<<(std::ostream &os, const Tensor &t);
 
 
-
-
-
     Tensor operator()(int idx);
+
     Tensor operator()(int idx, std::pair<int, int> range);
 
     void operator=(const VariantData &value);
@@ -229,10 +243,11 @@ public:
     }
 
     Tensor transpose(int dim1, int dim2);
+
     Tensor permute(int dim[]);
 
     template<size_t N>
-  Tensor view(int(&shape)[N]){
+    Tensor view(int(&shape)[N]){
         Tensor t = Tensor();
         t.data = data;
         t.data_shared = data_shared;
@@ -242,49 +257,48 @@ public:
         for(int i = 0; i < t.dimension; i++){
             t.shape[i] = shape[i];
         }
-        t.init_node(global_require_grad);
+        t.init_node();
         return t;
     }
 
     template<typename T, size_t N>
-static   Tensor eye(int(&size)[N]){
+    static Tensor eye(int(&size)[N]){
         Tensor t = init_with_shape(size);
         t.data_shared.reset(new VariantData[t.total_size]);
         t.data = t.data_shared.get();
         for(int i = 0; i < t.total_size; i++){
-            t.data[i] = (T)0;
+            t.data[i] = (T) 0;
         }
         int min = t.shape[0] < t.shape[1] ? t.shape[0] : t.shape[1];
         for(int i = 0; i < min; i++){
-            t.data[i * t.shape[1] + i] = (T)1;
+            t.data[i * t.shape[1] + i] = (T) 1;
         }
         return t;
     }
 
     template<typename T>
-static  Tensor eye(int *size, const int dim){
+    static Tensor eye(int *size, const int dim){
         Tensor t = init_with_shape<T>(size, dim);
         t.data_shared.reset(new VariantData[t.total_size]);
         t.data = t.data_shared.get();
         for(int i = 0; i < t.total_size; i++){
-            t.data[i] = (T)0;
+            t.data[i] = (T) 0;
         }
         int min = t.shape[0] < t.shape[1] ? t.shape[0] : t.shape[1];
         for(int i = 0; i < min; i++){
-            t.data[i * t.shape[1] + i] = (T)1;
+            t.data[i * t.shape[1] + i] = (T) 1;
         }
         return t;
     }
-  
-
 
 
     // Reduction operators
     // Shrink the zero dims of a tensor.
     Tensor shrink(Tensor &ts);
+
     // TODO: ?
- static Tensor sum(Tensor &ts, vector<int> dims){
-        for(int dim : dims){
+    static Tensor sum(Tensor &ts, vector<int> dims){
+        for(int dim: dims){
             if(dim < 0 || dim >= ts.get_dimension()){
                 throw std::invalid_argument("Invalid dimension input.");
             }
@@ -302,50 +316,70 @@ static  Tensor eye(int *size, const int dim){
                 if(i == dims[j]){
                     j++;
                 }
-            }
-            else{
+            }else{
                 break;
             }
         }
     }
 
     friend Tensor operator+(Tensor &t1, Tensor &t2);
-     friend Tensor operator+(Tensor &t1, VariantData t2);
-    friend Tensor operator-(Tensor &t1,VariantData a);
+
+    friend Tensor operator+(Tensor &t1, VariantData t2);
+
+    friend Tensor operator-(Tensor &t1, VariantData a);
+
     friend Tensor operator-(Tensor &t1, Tensor &t2);
+
     friend Tensor operator*(Tensor &t1, Tensor &t2);
-     friend Tensor operator*(Tensor &t1,VariantData t2);
+
+    friend Tensor operator*(Tensor &t1, VariantData t2);
 
 
-     friend Tensor operator==(Tensor &t1,Tensor &t2);
-     friend Tensor operator!=(Tensor &t1,Tensor &t2);
-     friend Tensor operator<=(Tensor &t1,Tensor &t2);
-     friend Tensor operator>=(Tensor &t1,Tensor &t2);
-     friend Tensor operator<(Tensor &t1,Tensor &t2);
-     friend Tensor operator>(Tensor &t1,Tensor &t2);
+    friend Tensor operator==(Tensor &t1, Tensor &t2);
+
+    friend Tensor operator!=(Tensor &t1, Tensor &t2);
+
+    friend Tensor operator<=(Tensor &t1, Tensor &t2);
+
+    friend Tensor operator>=(Tensor &t1, Tensor &t2);
+
+    friend Tensor operator<(Tensor &t1, Tensor &t2);
+
+    friend Tensor operator>(Tensor &t1, Tensor &t2);
 
 };
-
-
 
 
 // Math operators
 //static Tensor add(Tensor&t1, VariantData vd)throw();
 Tensor add(Tensor &t1, Tensor &t2) throw();
+
+Tensor add(Tensor &t1, VariantData &t2) throw();
+
+
 Tensor sub(Tensor &t1, Tensor &t2) throw();
-Tensor sub(Tensor &t1,VariantData vd) throw();
+
+Tensor sub(Tensor &t1, VariantData vd) throw();
+
 Tensor mul_pt(Tensor &t1, Tensor &t2) throw();
-Tensor mul_pt(Tensor&t1, VariantData vd)throw();
-Tensor div(Tensor &t1,Tensor &t2)throw();
-Tensor div(Tensor &t1,VariantData vd) throw();
 
-Tensor eq(Tensor &t1,Tensor &t2) throw();
-Tensor ne(Tensor &t1,Tensor &t2) throw();
-Tensor ge(Tensor &t1,Tensor &t2) throw();
-Tensor gt(Tensor &t1,Tensor &t2) throw();
-Tensor le(Tensor &t1,Tensor &t2) throw();
-Tensor lt(Tensor &t1,Tensor &t2) throw();
+Tensor mul_pt(Tensor &t1, VariantData vd) throw();
 
+Tensor div(Tensor &t1, Tensor &t2) throw();
+
+Tensor div(Tensor &t1, VariantData vd) throw();
+
+Tensor eq(Tensor &t1, Tensor &t2) throw();
+
+Tensor ne(Tensor &t1, Tensor &t2) throw();
+
+Tensor ge(Tensor &t1, Tensor &t2) throw();
+
+Tensor gt(Tensor &t1, Tensor &t2) throw();
+
+Tensor le(Tensor &t1, Tensor &t2) throw();
+
+Tensor lt(Tensor &t1, Tensor &t2) throw();
 
 
 template<typename T, size_t N>
@@ -356,7 +390,7 @@ static Tensor rand(int(&size)[N]){
     std::uniform_real_distribution<> distrib(0, 100);
 
     for(int i = 0; i < t.get_total_size(); i++){
-        t.data_ptr()[i] = (T)distrib(gen);
+        t.data_ptr()[i] = (T) distrib(gen);
     }
     return t;
 }
@@ -373,7 +407,7 @@ static Tensor rand(int *arr, const int dim){
     std::uniform_real_distribution<> distrib(0, 100);
 
     for(int i = 0; i < t.get_total_size(); i++){
-        t.data_ptr()[i] = (T)distrib(gen);
+        t.data_ptr()[i] = (T) distrib(gen);
     }
     return t;
 }
@@ -382,7 +416,7 @@ template<typename T, size_t N>
 static Tensor zeros(int(&size)[N]){
     Tensor t = Tensor::init_with_shape<T>(size, N);
     for(int i = 0; i < t.get_total_size(); i++){
-        t.data_ptr()[i] = (T)0;
+        t.data_ptr()[i] = (T) 0;
     }
     return t;
 }
@@ -395,7 +429,7 @@ static Tensor zeros(int *arr, const int dim){
     }
     Tensor t = Tensor::init_with_shape<T>(size, dim);
     for(int i = 0; i < t.get_total_size(); i++){
-        t.data_ptr()[i] = (T)0;
+        t.data_ptr()[i] = (T) 0;
     }
     return t;
 }
@@ -405,14 +439,14 @@ static Tensor zeros(int *arr, const int dim){
 */
 static Tensor zeros_like(Tensor &ts){
     switch(ts.get_dtype_id()){
-    case 0:
-        return zeros<double>(ts.get_shape(), ts.get_dimension());
-    case 1:
-        return zeros<int>(ts.get_shape(), ts.get_dimension());
-    case 2:
-        return zeros<float>(ts.get_shape(), ts.get_dimension());
-    case 3:
-        return zeros<double>(ts.get_shape(), ts.get_dimension());
+        case 0:
+            return zeros<double>(ts.get_shape(), ts.get_dimension());
+        case 1:
+            return zeros<int>(ts.get_shape(), ts.get_dimension());
+        case 2:
+            return zeros<float>(ts.get_shape(), ts.get_dimension());
+        case 3:
+            return zeros<double>(ts.get_shape(), ts.get_dimension());
     }
 
     return Tensor();
@@ -422,7 +456,7 @@ template<typename T, size_t N>
 static Tensor ones(int(&size)[N]){
     Tensor t = Tensor::init_with_shape(size);
     for(int i = 0; i < t.get_total_size(); i++){
-        t.data_ptr()[i] = (T)1;
+        t.data_ptr()[i] = (T) 1;
     }
     return t;
 }
@@ -431,7 +465,7 @@ template<typename T>
 static Tensor ones(int *size, const int dim){
     Tensor t = Tensor::init_with_shape<T>(size, dim);
     for(int i = 0; i < t.get_total_size(); i++){
-        t.data_ptr()[i] = (T)1;
+        t.data_ptr()[i] = (T) 1;
     }
     return t;
 }
@@ -439,41 +473,37 @@ static Tensor ones(int *size, const int dim){
 
 static Tensor ones_like(Tensor &ts){
     switch(ts.get_dtype_id()){
-    case 0:
-        return ones<double>(ts.get_shape(), ts.get_dimension());
-    case 1:
-        return ones<int>(ts.get_shape(), ts.get_dimension());
-    case 2:
-        return ones<float>(ts.get_shape(), ts.get_dimension());
-    case 3:
-        return ones<double>(ts.get_shape(), ts.get_dimension());
+        case 0:
+            return ones<double>(ts.get_shape(), ts.get_dimension());
+        case 1:
+            return ones<int>(ts.get_shape(), ts.get_dimension());
+        case 2:
+            return ones<float>(ts.get_shape(), ts.get_dimension());
+        case 3:
+            return ones<double>(ts.get_shape(), ts.get_dimension());
     }
 }
-
-
 
 
 static Tensor eye_like(Tensor &ts){
     switch(ts.get_dtype_id()){
-    case 0:
-        return Tensor::eye<double>(ts.get_shape(), ts.get_dimension());
-    case 1:
-        return Tensor::eye<int>(ts.get_shape(), ts.get_dimension());
-    case 2:
-        return Tensor::eye<float>(ts.get_shape(), ts.get_dimension());
-    case 3:
-        return Tensor::eye<double>(ts.get_shape(), ts.get_dimension());
+        case 0:
+            return Tensor::eye<double>(ts.get_shape(), ts.get_dimension());
+        case 1:
+            return Tensor::eye<int>(ts.get_shape(), ts.get_dimension());
+        case 2:
+            return Tensor::eye<float>(ts.get_shape(), ts.get_dimension());
+        case 3:
+            return Tensor::eye<double>(ts.get_shape(), ts.get_dimension());
     }
 }
-
-
 
 
 template<typename T, size_t N>
 static Tensor full(int(&size)[N], T value){
     Tensor t = Tensor::init_with_shape(size);
     for(int i = 0; i < t.get_total_size(); i++){
-        t.data_ptr()[i] = (T)value;
+        t.data_ptr()[i] = (T) value;
     }
     return t;
 }
@@ -498,7 +528,8 @@ static Tensor tile(Tensor &tensor, int(&dims)[N]){
     return t;
 }
 
- Tensor transpose(Tensor tensor, int dim1, int dim2);
+Tensor transpose(Tensor tensor, int dim1, int dim2);
+
 Tensor permute(Tensor tensor, int dim[]);
 
 template<size_t N>

@@ -111,7 +111,5 @@ public:
 
 ts::Tensor autograd(ts::Tensor &in, ts::Tensor &out) throw();
 
-ts::Tensor autograd(Node &in, Node &out) throw();
-
 };
 
