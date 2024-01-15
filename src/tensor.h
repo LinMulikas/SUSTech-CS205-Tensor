@@ -17,6 +17,12 @@ using VariantData = std::variant<bool, int, float, double>;
 using std::vector;
 using std::shared_ptr, std::make_shared;
 
+double promote(VariantData &vd);
+
+void assign(VariantData &vd, double val, int type_id);
+
+double inv(VariantData &vd) throw();
+
 template<class T>
 static int dtype_id_from(){
     if(typeid(T) == typeid(bool)) return 0;
@@ -40,7 +46,7 @@ private:
     int dtype_id;
 
     // Autograd
-    bool _require_grad = true;
+    bool _require_grad = false;
     shared_ptr<grad::Node> _node;
 
     template<typename ArrayType, size_t N>
@@ -69,6 +75,14 @@ private:
 public:
     // public autograd
     void set_node(shared_ptr<grad::Node>);
+
+    void set_grad(bool grad){
+        _require_grad = grad;
+    }
+
+    void require_grad(){
+        this->set_grad(true);
+    }
 
     void init_node();
 
@@ -127,7 +141,8 @@ public:
         t.data = t.data_shared.get();
         // default type float.
         t.dtype_id = 2;
-        t.init_node();
+        if(t._require_grad)
+            t.init_node();
         return t;
     }
 
@@ -146,7 +161,8 @@ public:
 
         // default type float.
         t.dtype_id = 2;
-        t.init_node();
+        if(t._require_grad)
+            t.init_node();
         return t;
     }
 
@@ -167,8 +183,8 @@ public:
         t.data = t.data_shared.get();
 
         t.dtype_id = dtype_id_from<T>();
-
-        t.init_node();
+        if(t._require_grad)
+            t.init_node();
         return t;
     }
 
@@ -219,7 +235,8 @@ public:
         data = data_shared.get();
         VariantData *pointer = data;
         copyData(arr, pointer, data_shared.get() + total_size);
-        init_node();
+        if(this->_require_grad)
+            init_node();
     }
 
     Tensor(int type_id);
@@ -257,7 +274,8 @@ public:
         for(int i = 0; i < t.dimension; i++){
             t.shape[i] = shape[i];
         }
-        t.init_node();
+        if(t._require_grad)
+            t.init_node();
         return t;
     }
 
@@ -347,15 +365,35 @@ public:
 
     friend Tensor operator>(Tensor &t1, Tensor &t2);
 
+    Tensor inv_pt() throw();
 };
 
 
 // Math operators
 //static Tensor add(Tensor&t1, VariantData vd)throw();
+Tensor apply(Tensor &ts, double(*fn)(double));
+
+Tensor Sin(Tensor &ts);
+
+Tensor Cos(Tensor &ts);
+
+Tensor Exp(ts::Tensor &ts);
+
+Tensor Ln(ts::Tensor &ts);
+
+Tensor Log2(Tensor &ts);
+
+Tensor Pow(Tensor &ts, unsigned int n);
+
+Tensor inv_pt(Tensor &ts) throw();
+
 Tensor add(Tensor &t1, Tensor &t2) throw();
 
 Tensor add(Tensor &t1, VariantData &t2) throw();
 
+Tensor add_with_grad(Tensor &t1, Tensor &t2) throw();
+
+Tensor sub_with_grad(Tensor &t1, Tensor &t2) throw();
 
 Tensor sub(Tensor &t1, Tensor &t2) throw();
 
@@ -380,7 +418,6 @@ Tensor gt(Tensor &t1, Tensor &t2) throw();
 Tensor le(Tensor &t1, Tensor &t2) throw();
 
 Tensor lt(Tensor &t1, Tensor &t2) throw();
-
 
 template<typename T, size_t N>
 static Tensor rand(int(&size)[N]){
@@ -537,39 +574,6 @@ static Tensor view(Tensor tensor, int(&shape)[N]){
     return tensor.view(shape);
 }
 
-
-// Tensor operator+(Tensor &t1, Tensor &t2){
-//     std::cout << "Test";
-//     int *shape1 = t1.get_shape();
-//     int *shape2 = t2.get_shape();
-//     size_t dim1 = sizeof(shape1) / sizeof(shape1[0]);
-//     size_t dim2 = sizeof(shape1) / sizeof(shape1[0]);
-//     if(dim1 != dim2){
-//         throw std::invalid_argument("The input tensors need to be same shape.");
-//         for(int i = 0; i < dim1; i++){
-//             if(shape1[i] != shape2[i]){
-//                 throw std::invalid_argument("The input tensors need to be same shape.");
-//             }
-//         }
-//     }
-//     else{
-//         int tid_1 = t1.type_id();
-//         int tid_2 = t2.type_id();
-//         int tid_rst = std::max(tid_1, tid_2);
-
-//         Tensor result = zeros_like(t1, tid_rst);
-//         auto ptr = result.data_ptr();
-//         auto ptr1 = t1.data_ptr();
-//         auto ptr2 = t2.data_ptr();
-
-//         using type1 = VariantData[t1.data_ptr()[0].index()];
-//         using type2 = VariantData[t2.data_ptr()[0].index()];
-
-//         for(size_t i = 0; i < t1.get_total_size(); i++){
-//             ptr[i] = ptr1[i] + ptr2[i];
-//         }
-//     }
-// }
 
 }
 

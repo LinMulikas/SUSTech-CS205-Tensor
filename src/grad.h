@@ -3,10 +3,16 @@
 #include <memory>
 #include <iostream>
 
+namespace grad{
+class Node;
+};
+
 namespace ts{
 class Tensor;
 
 Tensor add(Tensor &ts1, Tensor &ts2) throw();
+
+
 };
 
 namespace grad{
@@ -23,16 +29,11 @@ protected:
     vector<shared_ptr<Node>> children;
 
 public:
-    Node(vector<shared_ptr<Node>> &pars){
-        parents = pars;
-    };
+    Node(ts::Tensor &ts);
 
-    Node(const Node &that){
-        value = that.value;
-        grad = that.grad;
-        parents = that.parents;
-        children = that.children;
-    };
+    Node(vector<shared_ptr<Node>> &pars);
+
+    Node(const Node &that);
 
     Node(){
         value = nullptr;
@@ -69,34 +70,31 @@ public:
 
     virtual void eval();
 
-    virtual ts::Tensor gradTo(Node &that) throw();
+    virtual grad::Node gradTo(Node &that) throw();
 };
 
 class Variable : public Node{
 public:
-
-    Variable(ts::Tensor &ts){
-        value = make_shared<ts::Tensor>(ts);
-    }
+    Variable(ts::Tensor &ts);
 
     Variable(){};
 
     virtual void eval(){};
 
-    virtual ts::Tensor gradTo(Node &that) throw();
+    virtual grad::Node gradTo(Node &that) throw();
 
 };
 
 /*
     The add-node has parents with size 2.
 */
-class Add : public Node{
+class AddNode : public Node{
 public:
-    Add(shared_ptr<Node> node1, shared_ptr<Node> node2);
+    AddNode(shared_ptr<Node> node1, shared_ptr<Node> node2);
 
-    Add(Node &a, Node &b);
+    AddNode(Node &a, Node &b);
 
-    Add(Node a){
+    AddNode(Node a){
         value = a.value_ptr();
         grad = a.grad_ptr();
         parents = a.parents_ptr();
@@ -105,11 +103,43 @@ public:
 
     virtual void eval() throw();
 
-    virtual ts::Tensor gradTo(Node &that) throw();
+    virtual grad::Node gradTo(Node &that) throw();
 
 };
 
-ts::Tensor autograd(ts::Tensor &in, ts::Tensor &out) throw();
+class SubNode : public Node{
+public:
+    SubNode(shared_ptr<Node> node1, shared_ptr<Node> node2);
+
+    SubNode(Node &a, Node &b);
+
+    SubNode(Node a){
+        value = a.value_ptr();
+        grad = a.grad_ptr();
+        parents = a.parents_ptr();
+        children = a.children_ptr();
+    }
+
+    virtual void eval() throw();
+
+    virtual grad::Node gradTo(Node &that) throw();
+};
+
+class SinNode : public Node{
+public:
+    SinNode(Node &node);
+
+    SinNode(ts::Tensor &ts);
+
+    SinNode(){};
+
+    virtual void eval() throw();
+
+    virtual grad::Node gradTo(Node &that) throw();
+
+};
+
+grad::Node autograd(ts::Tensor &in, ts::Tensor &out) throw();
 
 };
 
