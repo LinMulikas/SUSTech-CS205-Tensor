@@ -3,13 +3,26 @@
 
 using namespace std;
 
-using VD = variant<int, float>;
+class vec{
+public:
+  int x;
+  int y;
+
+public:
+ vec(){}
+ vec(int a,int b):x(a),y(b){}
+
+void print(){
+    std::cout<<x<<","<<y<<std::endl;
+}
+
+};
 
 int main(){
-    VD vd1{1};
-    VD vd2{(float)1.1};
+   
 
 
-
+    
+    
     return 0;
 }

@@ -54,7 +54,8 @@ private:
         for(size_t i = 0; i < N; ++i){
             if constexpr(std::is_array<ArrayType>::value){
                 copyData(arr[i], dest, destEnd);
-            }else{
+            }
+            else{
                 *dest = arr[i];
                 if(dest < destEnd)
                     dest++;
@@ -122,6 +123,16 @@ public:
     Tensor le(Tensor &t2) throw();
 
     Tensor lt(Tensor &t2) throw();
+    //comparator
+
+    //dim-operator
+    Tensor expansion_1d();
+    Tensor mean(int dim);
+    Tensor sum(int dim);
+    Tensor min(int dim);
+    Tensor max(int dim);
+
+
 
 
     static VariantData copy_tile(VariantData *src, Tensor *dst, int idx, int *src_shape, int dim);
@@ -285,11 +296,11 @@ public:
         t.data_shared.reset(new VariantData[t.total_size]);
         t.data = t.data_shared.get();
         for(int i = 0; i < t.total_size; i++){
-            t.data[i] = (T) 0;
+            t.data[i] = (T)0;
         }
         int min = t.shape[0] < t.shape[1] ? t.shape[0] : t.shape[1];
         for(int i = 0; i < min; i++){
-            t.data[i * t.shape[1] + i] = (T) 1;
+            t.data[i * t.shape[1] + i] = (T)1;
         }
         return t;
     }
@@ -300,11 +311,11 @@ public:
         t.data_shared.reset(new VariantData[t.total_size]);
         t.data = t.data_shared.get();
         for(int i = 0; i < t.total_size; i++){
-            t.data[i] = (T) 0;
+            t.data[i] = (T)0;
         }
         int min = t.shape[0] < t.shape[1] ? t.shape[0] : t.shape[1];
         for(int i = 0; i < min; i++){
-            t.data[i * t.shape[1] + i] = (T) 1;
+            t.data[i * t.shape[1] + i] = (T)1;
         }
         return t;
     }
@@ -316,7 +327,7 @@ public:
 
     // TODO: ?
     static Tensor sum(Tensor &ts, vector<int> dims){
-        for(int dim: dims){
+        for(int dim : dims){
             if(dim < 0 || dim >= ts.get_dimension()){
                 throw std::invalid_argument("Invalid dimension input.");
             }
@@ -334,11 +345,15 @@ public:
                 if(i == dims[j]){
                     j++;
                 }
-            }else{
+            }
+            else{
                 break;
             }
         }
     }
+
+
+
 
     friend Tensor operator+(Tensor &t1, Tensor &t2);
 
@@ -427,7 +442,7 @@ static Tensor rand(int(&size)[N]){
     std::uniform_real_distribution<> distrib(0, 100);
 
     for(int i = 0; i < t.get_total_size(); i++){
-        t.data_ptr()[i] = (T) distrib(gen);
+        t.data_ptr()[i] = (T)distrib(gen);
     }
     return t;
 }
@@ -444,7 +459,7 @@ static Tensor rand(int *arr, const int dim){
     std::uniform_real_distribution<> distrib(0, 100);
 
     for(int i = 0; i < t.get_total_size(); i++){
-        t.data_ptr()[i] = (T) distrib(gen);
+        t.data_ptr()[i] = (T)distrib(gen);
     }
     return t;
 }
@@ -453,7 +468,7 @@ template<typename T, size_t N>
 static Tensor zeros(int(&size)[N]){
     Tensor t = Tensor::init_with_shape<T>(size, N);
     for(int i = 0; i < t.get_total_size(); i++){
-        t.data_ptr()[i] = (T) 0;
+        t.data_ptr()[i] = (T)0;
     }
     return t;
 }
@@ -466,7 +481,7 @@ static Tensor zeros(int *arr, const int dim){
     }
     Tensor t = Tensor::init_with_shape<T>(size, dim);
     for(int i = 0; i < t.get_total_size(); i++){
-        t.data_ptr()[i] = (T) 0;
+        t.data_ptr()[i] = (T)0;
     }
     return t;
 }
@@ -476,14 +491,14 @@ static Tensor zeros(int *arr, const int dim){
 */
 static Tensor zeros_like(Tensor &ts){
     switch(ts.get_dtype_id()){
-        case 0:
-            return zeros<double>(ts.get_shape(), ts.get_dimension());
-        case 1:
-            return zeros<int>(ts.get_shape(), ts.get_dimension());
-        case 2:
-            return zeros<float>(ts.get_shape(), ts.get_dimension());
-        case 3:
-            return zeros<double>(ts.get_shape(), ts.get_dimension());
+    case 0:
+        return zeros<double>(ts.get_shape(), ts.get_dimension());
+    case 1:
+        return zeros<int>(ts.get_shape(), ts.get_dimension());
+    case 2:
+        return zeros<float>(ts.get_shape(), ts.get_dimension());
+    case 3:
+        return zeros<double>(ts.get_shape(), ts.get_dimension());
     }
 
     return Tensor();
@@ -493,7 +508,7 @@ template<typename T, size_t N>
 static Tensor ones(int(&size)[N]){
     Tensor t = Tensor::init_with_shape(size);
     for(int i = 0; i < t.get_total_size(); i++){
-        t.data_ptr()[i] = (T) 1;
+        t.data_ptr()[i] = (T)1;
     }
     return t;
 }
@@ -502,7 +517,7 @@ template<typename T>
 static Tensor ones(int *size, const int dim){
     Tensor t = Tensor::init_with_shape<T>(size, dim);
     for(int i = 0; i < t.get_total_size(); i++){
-        t.data_ptr()[i] = (T) 1;
+        t.data_ptr()[i] = (T)1;
     }
     return t;
 }
@@ -510,28 +525,28 @@ static Tensor ones(int *size, const int dim){
 
 static Tensor ones_like(Tensor &ts){
     switch(ts.get_dtype_id()){
-        case 0:
-            return ones<double>(ts.get_shape(), ts.get_dimension());
-        case 1:
-            return ones<int>(ts.get_shape(), ts.get_dimension());
-        case 2:
-            return ones<float>(ts.get_shape(), ts.get_dimension());
-        case 3:
-            return ones<double>(ts.get_shape(), ts.get_dimension());
+    case 0:
+        return ones<double>(ts.get_shape(), ts.get_dimension());
+    case 1:
+        return ones<int>(ts.get_shape(), ts.get_dimension());
+    case 2:
+        return ones<float>(ts.get_shape(), ts.get_dimension());
+    case 3:
+        return ones<double>(ts.get_shape(), ts.get_dimension());
     }
 }
 
 
 static Tensor eye_like(Tensor &ts){
     switch(ts.get_dtype_id()){
-        case 0:
-            return Tensor::eye<double>(ts.get_shape(), ts.get_dimension());
-        case 1:
-            return Tensor::eye<int>(ts.get_shape(), ts.get_dimension());
-        case 2:
-            return Tensor::eye<float>(ts.get_shape(), ts.get_dimension());
-        case 3:
-            return Tensor::eye<double>(ts.get_shape(), ts.get_dimension());
+    case 0:
+        return Tensor::eye<double>(ts.get_shape(), ts.get_dimension());
+    case 1:
+        return Tensor::eye<int>(ts.get_shape(), ts.get_dimension());
+    case 2:
+        return Tensor::eye<float>(ts.get_shape(), ts.get_dimension());
+    case 3:
+        return Tensor::eye<double>(ts.get_shape(), ts.get_dimension());
     }
 }
 
@@ -540,7 +555,7 @@ template<typename T, size_t N>
 static Tensor full(int(&size)[N], T value){
     Tensor t = Tensor::init_with_shape(size);
     for(int i = 0; i < t.get_total_size(); i++){
-        t.data_ptr()[i] = (T) value;
+        t.data_ptr()[i] = (T)value;
     }
     return t;
 }
@@ -576,4 +591,3 @@ static Tensor view(Tensor tensor, int(&shape)[N]){
 
 
 }
-

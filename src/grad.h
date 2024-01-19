@@ -1,5 +1,4 @@
 #pragma once
-
 #include <memory>
 #include <iostream>
 
@@ -65,7 +64,6 @@ public:
     }
 
     friend ostream &operator<<(ostream &os, Node &node);
-
     friend Node operator+(Node &node1, Node &node2);
 
     virtual void eval();
@@ -142,4 +140,3 @@ public:
 grad::Node autograd(ts::Tensor &in, ts::Tensor &out) throw();
 
 };
-

@@ -17,7 +17,8 @@ int main(){
         AddNode node test
     */
 
-    int shape[2] = {3, 2};
+    int shape[3] = {2, 2,2};
+
 
     Tensor ts1 = rand<int>(shape);
     Tensor ts2 = rand<double>(shape);
@@ -29,10 +30,10 @@ int main(){
     auto grad1 = grad::autograd(ts2, ts3);
     cout << grad1 << endl;
 
-//    int shape[1]{10};
-//    Tensor ts1 = rand<int>(shape);
-//    cout << ts1 << endl;
-//    cout << ts::Exp(ts1) << endl;
+    //    int shape[1]{10};
+    //    Tensor ts1 = rand<int>(shape);
+    //    cout << ts1 << endl;
+    //    cout << ts::Exp(ts1) << endl;
 
     return 0;
 }
