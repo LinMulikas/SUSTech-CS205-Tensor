@@ -497,7 +497,8 @@ Tensor sub_with_grad(Tensor &t1, Tensor &t2) throw(){
     }
     t1.init_node();
     t2.init_node();
-    result.set_node(make_shared<grad::SubNode>(grad::AddNode(t1.node_ptr(), t2.node_ptr())));
+    result.set_node(make_shared<grad::SubNode>(grad::SubNode(t1.node_ptr(), t2.node_ptr())));
+
     return result;
 }
 

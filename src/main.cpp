@@ -17,23 +17,20 @@ int main(){
         AddNode node test
     */
 
-    int shape[3] = {2, 2,2};
+    int shape[1] = {2};
 
 
     Tensor ts1 = rand<int>(shape);
     Tensor ts2 = rand<double>(shape);
     ts1.require_grad();
-    Tensor ts3 = ts1 - ts2;
     cout << ts1 << endl;
     cout << ts2 << endl;
 
+    Tensor ts3 = ts1 - ts2;
     auto grad1 = grad::autograd(ts2, ts3);
-    cout << grad1 << endl;
 
-    //    int shape[1]{10};
-    //    Tensor ts1 = rand<int>(shape);
-    //    cout << ts1 << endl;
-    //    cout << ts::Exp(ts1) << endl;
+//    auto grad2 = grad::autograd(ts1, ts4);
+    cout << grad1 << endl;
 
     return 0;
 }

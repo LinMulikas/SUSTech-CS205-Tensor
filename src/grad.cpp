@@ -93,7 +93,10 @@ void AddNode::eval() throw(){
         // The parents node must be size 2.
         ts::Tensor &ts1 = parents[0]->getTensor();
         ts::Tensor &ts2 = parents[1]->getTensor();
-        value = make_shared<ts::Tensor>(ts1 + ts2);
+//        cout << "test" << endl;
+//        cout << ts1 << endl;
+//        cout << ts2 << endl;
+        value = make_shared<ts::Tensor>(ts::add(ts1, ts2));
     }
 }
 
@@ -129,7 +132,7 @@ void SubNode::eval() throw(){
         // The parents node must be size 2.
         ts::Tensor &ts1 = parents[0]->getTensor();
         ts::Tensor &ts2 = parents[1]->getTensor();
-        value = make_shared<ts::Tensor>(ts1 - ts2);
+        value = make_shared<ts::Tensor>(ts::sub(ts1, ts2));
     }
 }
 
