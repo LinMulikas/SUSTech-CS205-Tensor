@@ -28,14 +28,14 @@ VariantData Tensor::copy_tile(VariantData *src, Tensor *dst, int idx, int *src_s
 double promote(VariantData &vd){
     // std::cout << "promote" << std::endl;
     switch(vd.index()){
-    case 0:
-        return (double)(*(std::get_if<0>(&vd)));
-    case 1:
-        return (double)(*(std::get_if<1>(&vd)));
-    case 2:
-        return (double)(*(std::get_if<2>(&vd)));
-    case 3:
-        return (double)(*(std::get_if<3>(&vd)));
+        case 0:
+            return (double) (*(std::get_if<0>(&vd)));
+        case 1:
+            return (double) (*(std::get_if<1>(&vd)));
+        case 2:
+            return (double) (*(std::get_if<2>(&vd)));
+        case 3:
+            return (double) (*(std::get_if<3>(&vd)));
     }
     return 0;
 };
@@ -43,14 +43,14 @@ double promote(VariantData &vd){
 
 void assign(VariantData &vd, double val, int type_id){
     switch(type_id){
-    case 0:
-        vd = (bool)val;
-    case 1:
-        vd = (int)val;
-    case 2:
-        vd = (float)val;
-    case 3:
-        vd = (double)val;
+        case 0:
+            vd = (bool) val;
+        case 1:
+            vd = (int) val;
+        case 2:
+            vd = (float) val;
+        case 3:
+            vd = (double) val;
     }
 }
 
@@ -69,9 +69,8 @@ void Tensor::print(std::ostream &os, int index, int dim) const{
         // 打印单个元素
         std::visit([&os](auto &&arg){
             os << std::fixed << std::setprecision(4) << arg;
-                   }, data[index]);
-    }
-    else{
+        }, data[index]);
+    }else{
         // 打印开括号
         os << "[";
 
@@ -101,14 +100,14 @@ int *Tensor::size(){
 
 std::string Tensor::type_name(){
     switch(dtype_id){
-    case 0:
-        return "bool";
-    case 1:
-        return "int";
-    case 2:
-        return "float";
-    case 3:
-        return "double";
+        case 0:
+            return "bool";
+        case 1:
+            return "int";
+        case 2:
+            return "float";
+        case 3:
+            return "double";
     }
 }
 
@@ -147,6 +146,44 @@ std::ostream &operator<<(std::ostream &os, const Tensor &t){
     return os;
 }
 
+size_t coordinates_to_index(vector<size_t> coordinates, int *shape, int dim){
+    size_t index = 0;
+    size_t *acc_ptr = shape_to_acc(shape, dim);
+    for(int i = 0; i < dim; i++){
+        index += acc_ptr[i] * coordinates[i];
+    }
+    return index;
+}
+
+size_t *shape_to_acc(int *shape, int dim){
+    size_t acc[dim];
+    for(int i = dim; i >= 0; i--){
+        if(i == dim){
+            acc[i] = 1;
+        }else{
+            acc[i] = shape[i + 1] * acc[i + 1];
+        }
+    }
+    return acc;
+}
+
+vector<size_t> index_to_coordinates(size_t index, int *shape, int dim){
+    size_t acc[dim];
+    size_t *acc_ptr = shape_to_acc(shape, dim);
+    for(int i = 0; i < dim; i++){
+        acc[i] = acc_ptr[i];
+    }
+    vector<size_t> result;
+
+    for(int i = 0; i < dim; i++){
+        int rst = index / acc[i];
+        result.push_back(rst);
+        index %= acc[i];
+    }
+
+    return result;
+}
+
 void Tensor::init_node(){
     _node = make_shared<grad::Variable>(grad::Variable(*this));
 }
@@ -182,15 +219,13 @@ Tensor Tensor::operator()(int idx){
     Tensor t = Tensor();
     if(dimension == 1){
         t.dimension = 1;
-    }
-    else t.dimension = dimension - 1;
+    }else t.dimension = dimension - 1;
     t.shape.reset(new int[t.dimension]);
 
     for(int i = 0; i < t.dimension; i++){
         if(dimension == 1){
             t.shape[i] = 1;
-        }
-        else{
+        }else{
             t.shape[i] = shape[i + 1];
         }
     }
@@ -383,8 +418,7 @@ Tensor Tensor::div(VariantData ts){
 Tensor operator+(Tensor &ts1, Tensor &ts2){
     if(ts1._require_grad || ts2._require_grad){
         return add_with_grad(ts1, ts2);
-    }
-    else{
+    }else{
         return add(ts1, ts2);
     }
 }
@@ -392,8 +426,7 @@ Tensor operator+(Tensor &ts1, Tensor &ts2){
 Tensor operator-(Tensor &ts1, Tensor &ts2){
     if(ts1._require_grad || ts2._require_grad){
         return sub_with_grad(ts1, ts2);
-    }
-    else{
+    }else{
         return sub(ts1, ts2);
     }
 }
@@ -607,8 +640,7 @@ Tensor Tensor::eq(Tensor &t2) throw(){
         double v2 = promote(t2.data_ptr()[i]);
         if(v1 == v2){
             result.data_ptr()[i] = true;
-        }
-        else{
+        }else{
             result.data_ptr()[i] = false;
         }
 
@@ -625,8 +657,7 @@ Tensor Tensor::ne(Tensor &t2) throw(){
         double v2 = promote(t2.data_ptr()[i]);
         if(v1 != v2){
             result.data_ptr()[i] = true;
-        }
-        else{
+        }else{
             result.data_ptr()[i] = false;
         }
 
@@ -642,8 +673,7 @@ Tensor Tensor::le(Tensor &t2) throw(){
         double v2 = promote(t2.data_ptr()[i]);
         if(v1 <= v2){
             result.data_ptr()[i] = true;
-        }
-        else{
+        }else{
             result.data_ptr()[i] = false;
         }
 
@@ -660,8 +690,7 @@ Tensor Tensor::lt(Tensor &t2) throw(){
         double v2 = promote(t2.data_ptr()[i]);
         if(v1 < v2){
             result.data_ptr()[i] = true;
-        }
-        else{
+        }else{
             result.data_ptr()[i] = false;
         }
 
@@ -677,8 +706,7 @@ Tensor Tensor::ge(Tensor &t2) throw(){
         double v2 = promote(t2.data_ptr()[i]);
         if(v1 >= v2){
             result.data_ptr()[i] = true;
-        }
-        else{
+        }else{
             result.data_ptr()[i] = false;
         }
 
@@ -695,8 +723,7 @@ Tensor Tensor::gt(Tensor &t2) throw(){
         double v2 = promote(t2.data_ptr()[i]);
         if(v1 > v2){
             result.data_ptr()[i] = true;
-        }
-        else{
+        }else{
             result.data_ptr()[i] = false;
         }
 
@@ -802,6 +829,7 @@ Tensor ts::Ln(ts::Tensor &ts){
 Tensor ts::Log2(ts::Tensor &ts){
     return ts::apply(ts, log2);
 }
+
 //sum,mean,max,min-begin
 Tensor stack(vector<Tensor> &set){
 
@@ -829,6 +857,7 @@ Tensor Tensor::expansion_1d(){
 
     return t;
 }
+
 Tensor Tensor::mean(int dim){
 
 }
@@ -843,66 +872,70 @@ Tensor Tensor::min(int dim){
 
 Tensor Tensor::sum(int dim){
 
-
-    if(dim == 0){
-        Tensor t = Tensor();
-        t.dimension = dimension - 1;
-        t.shape.reset(new int[t.dimension]);
-        int skip_number = 1;
-        for(int i = 0; i < t.dimension; i++){
-            skip_number *= shape[i + 1];
-            t.shape[i] = shape[i + 1];
-        }
-        int id = this->get_dtype_id();
-        int new_total_size = skip_number;
-        t.total_size = new_total_size;
-        if(dimension == 1){
-            t.dimension = 1;
-            t.shape.reset(new int[1]);
-            t.shape[0] = 1;
-            t.total_size = 1;
-        }
-        t.data = new VariantData[new_total_size];
-
-
-        for(size_t i = 0; i < new_total_size; i++){
-            double temp = 0;
-            for(size_t j = 0; j < shape[dim]; j++){
-                double var = promote(data_ptr()[j * skip_number + i]);
-                temp += var;
-            }
-
-            assign(t.data_ptr()[i], temp, id);
-        }
-        return t;
-
-    }
-    else{
-        vector<Tensor> vec;
-        Tensor temp;
-        for(int i = 0; i < shape[0]; i++){
-            temp = (*this)(i).sum(dim - 1);
-
-            vec.push_back(temp.expansion_1d());
-        }
-        // for(int i=0;i<3;i++)
-        // {
-        //     std::cout<<vec[i]<<std::endl;
-      //  }
-        temp = stack(vec);
-        vec.clear();
-
-        return temp;
-
-
-
-    }
-
-
-
 }
 
 
+//
+//Tensor Tensor::sum(int dim){
+//    if(dim == 0){
+//        Tensor t = Tensor();
+//        t.dimension = dimension - 1;
+//        t.shape.reset(new int[t.dimension]);
+//        int skip_number = 1;
+//        for(int i = 0; i < t.dimension; i++){
+//            skip_number *= shape[i + 1];
+//            t.shape[i] = shape[i + 1];
+//        }
+//        int id = this->get_dtype_id();
+//        int new_total_size = skip_number;
+//        t.total_size = new_total_size;
+//        if(dimension == 1){
+//            t.dimension = 1;
+//            t.shape.reset(new int[1]);
+//            t.shape[0] = 1;
+//            t.total_size = 1;
+//        }
+//        t.data = new VariantData[new_total_size];
+//
+//
+//        for(size_t i = 0; i < new_total_size; i++){
+//            double temp = 0;
+//            for(size_t j = 0; j < shape[dim]; j++){
+//                double var = promote(data_ptr()[j * skip_number + i]);
+//                temp += var;
+//            }
+//
+//            assign(t.data_ptr()[i], temp, id);
+//        }
+//        return t;
+//
+//    }
+//    else{
+//        vector<Tensor> vec;
+//        Tensor temp;
+//        for(int i = 0; i < shape[0]; i++){
+//            temp = (*this)(i).sum(dim - 1);
+//
+//            vec.push_back(temp.expansion_1d());
+//        }
+//        // for(int i=0;i<3;i++)
+//        // {
+//        //     std::cout<<vec[i]<<std::endl;
+//      //  }
+//        temp = stack(vec);
+//        vec.clear();
+//
+//        return temp;
+//
+//
+//
+//    }
+//
+//
+//
+//}
+//
+//
 
 
 

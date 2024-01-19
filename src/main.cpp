@@ -13,24 +13,37 @@ using std::cout, std::endl;
 int main(){
     // ? Autograd test
 
-    /*
-        AddNode node test
-    */
+//    /*
+//        AddNode node test
+//    */
+//
+//    int shape[1] = {2};
+//
+//
+//    Tensor ts1 = rand<int>(shape);
+//    Tensor ts2 = rand<double>(shape);
+//    ts1.require_grad();
+//    cout << ts1 << endl;
+//    cout << ts2 << endl;
+//
+//    Tensor ts3 = ts1 - ts2;
+//    auto grad1 = grad::autograd(ts2, ts3);
+//
+////    auto grad2 = grad::autograd(ts1, ts4);
+//    cout << grad1 << endl;
 
-    int shape[1] = {2};
-
-
-    Tensor ts1 = rand<int>(shape);
-    Tensor ts2 = rand<double>(shape);
-    ts1.require_grad();
-    cout << ts1 << endl;
-    cout << ts2 << endl;
-
-    Tensor ts3 = ts1 - ts2;
-    auto grad1 = grad::autograd(ts2, ts3);
-
-//    auto grad2 = grad::autograd(ts1, ts4);
-    cout << grad1 << endl;
+    int shape[3]{2, 3, 4};
+    for(int i = 0; i < 24; i++){
+        auto vec = ts::index_to_coordinates(i, shape, 3);
+        cout << "index: " << i << endl;
+        cout << "corrdinates:\n";
+        for(auto x: vec){
+            cout << x << ", ";
+        }
+        cout << endl;
+        cout << "reverse: " << ts::coordinates_to_index(vec, shape, 3) << endl;
+        cout << endl;
+    }
 
     return 0;
 }
