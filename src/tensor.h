@@ -113,9 +113,9 @@ public:
 
     Tensor mul_pt(VariantData vd);
 
-    Tensor div(Tensor &t2);
+    Tensor div_pt(Tensor &t2);
 
-    Tensor div(VariantData vd);
+    Tensor div_pt(VariantData vd);
 
     //comparator
     Tensor eq(Tensor &t2) throw();

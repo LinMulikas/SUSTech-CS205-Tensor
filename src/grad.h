@@ -189,31 +189,32 @@ public:
     virtual grad::Node gradTo(Node &that) throw();
 };
 
-class ExpNode : public Node{
-public:
-    ExpNode(Node &node);
-
-    ExpNode(ts::Tensor &ts);
-
-    ExpNode(){};
-
-    virtual void eval() throw();
-
-    virtual grad::Node gradTo(Node &that) throw();
-};
-
-class LnNode : public Node{
-public:
-    LnNode(Node &node);
-
-    LnNode(ts::Tensor &ts);
-
-    LnNode(){};
-
-    virtual void eval() throw();
-
-    virtual grad::Node gradTo(Node &that) throw();
-};
+//
+//class ExpNode : public Node{
+//public:
+//    ExpNode(Node &node);
+//
+//    ExpNode(ts::Tensor &ts);
+//
+//    ExpNode(){};
+//
+//    virtual void eval() throw();
+//
+//    virtual grad::Node gradTo(Node &that) throw();
+//};
+//
+//class LnNode : public Node{
+//public:
+//    LnNode(Node &node);
+//
+//    LnNode(ts::Tensor &ts);
+//
+//    LnNode(){};
+//
+//    virtual void eval() throw();
+//
+//    virtual grad::Node gradTo(Node &that) throw();
+//};
 
 
 grad::Node autograd(ts::Tensor &in, ts::Tensor &out) throw();

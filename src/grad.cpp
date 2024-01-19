@@ -183,6 +183,44 @@ grad::Node MulPtNode::gradTo(Node &that) throw(){
     return result;
 }
 
+/*
+    DivPtNode implement
+*/
+
+DivPtNode::DivPtNode(shared_ptr<Node> node1, shared_ptr<Node> node2){
+    parents.push_back(node1);
+    parents.push_back(node2);
+}
+
+DivPtNode::DivPtNode(Node &node1, Node &node2){
+    // std::cout << "Test AddNode constructor." << std::endl;
+    parents.push_back(make_shared<Node>(node1));
+    parents.push_back(make_shared<Node>(node2));
+}
+
+void DivPtNode::eval() throw(){
+    // cout << "test AddNode::eval" << endl;
+    if(value == nullptr){
+        for(shared_ptr<Node> node: parents){
+            node->eval();
+        }
+        // The parents node must be size 2.
+        ts::Tensor &ts1 = parents[0]->getTensor();
+        ts::Tensor &ts2 = parents[1]->getTensor();
+//        cout << "test" << endl;
+//        cout << ts1 << endl;
+//        cout << ts2 << endl;
+        value = make_shared<ts::Tensor>(ts::div_pt_no_grad(ts1, ts2));
+    }
+}
+
+grad::Node DivPtNode::gradTo(Node &that) throw(){
+    grad::Node lhs = parents[0]->gradTo(that);
+    grad::Node rhs = parents[1]->gradTo(that);
+    grad::DivPtNode result{lhs, rhs};
+    result.eval();
+    return result;
+}
 
 /*
  * Sin

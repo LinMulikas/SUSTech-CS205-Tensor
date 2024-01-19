@@ -499,7 +499,7 @@ Tensor Tensor::mul_pt(Tensor &ts){
     return ts::mul_pt(*(this), ts);
 }
 
-Tensor Tensor::div(Tensor &ts){
+Tensor Tensor::div_pt(Tensor &ts){
     return ts::div_pt_with_grad(*(this), ts);
 }
 
@@ -512,8 +512,8 @@ Tensor Tensor::mul_pt(VariantData ts){
     return ts::mul_pt(*(this), ts);
 }
 
-Tensor Tensor::div(VariantData ts){
-    return ts::div(*(this), ts);
+Tensor Tensor::div_pt(VariantData ts){
+    return ts::div_pt(*(this), ts);
 }
 
 Tensor operator+(Tensor &ts1, Tensor &ts2){
@@ -1004,9 +1004,6 @@ Tensor ts::Sin(ts::Tensor &ts){
 
 Tensor ts::Sin_no_grad(ts::Tensor &ts){
     Tensor result = ts::apply(ts, sin);
-    if(ts.get_require_grad()){
-        result.set_node(make_shared<grad::SinNode>(ts));
-    }
     return result;
 }
 
@@ -1018,21 +1015,26 @@ Tensor ts::Cos(ts::Tensor &ts){
     return result;
 }
 
-Tensor ts::Exp(ts::Tensor &ts){
-    Tensor result = ts::apply(ts, exp);
-    if(ts.get_require_grad()){
-        result.set_node(make_shared<grad::ExpNode>(ts));
-    }
+Tensor ts::Cos_no_grad(ts::Tensor &ts){
+    Tensor result = ts::apply(ts, cos);
     return result;
 }
 
-Tensor ts::Ln(ts::Tensor &ts){
-    Tensor result = ts::apply(ts, log);
-    if(ts.get_require_grad()){
-        result.set_node(make_shared<grad::LnNode>(ts));
-    }
-    return result;
-}
+//Tensor ts::Exp(ts::Tensor &ts){
+//    Tensor result = ts::apply(ts, exp);
+//    if(ts.get_require_grad()){
+//        result.set_node(make_shared<grad::ExpNode>(ts));
+//    }
+//    return result;
+//}
+
+//Tensor ts::Ln(ts::Tensor &ts){
+//    Tensor result = ts::apply(ts, log);
+//    if(ts.get_require_grad()){
+//        result.set_node(make_shared<grad::LnNode>(ts));
+//    }
+//    return result;
+//}
 
 void test_dim_fn(Tensor &ts, Tensor(*fn)(Tensor &, int)){
     for(int i = 0; i < ts.get_dimension(); i++){
@@ -1093,7 +1095,7 @@ Tensor Tensor::mean(int dim){
     }
     int size = subtensors.size();
     VariantData vd = size;
-    return ts::div(result, vd);
+    return ts::div_pt(result, vd);
 }
 
 Tensor Tensor::max(int dim){

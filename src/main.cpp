@@ -36,6 +36,6 @@ int main(){
     int shape[3]{2, 3, 4};
     Tensor ts = rand<int>(shape, 3);
     cout << ts << endl;
-    
+    ts.test_mean();
     return 0;
 }
