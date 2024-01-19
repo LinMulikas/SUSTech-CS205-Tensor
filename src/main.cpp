@@ -33,17 +33,11 @@ int main(){
 //    cout << grad1 << endl;
 
     int shape[3]{2, 3, 4};
-    for(int i = 0; i < 24; i++){
-        auto vec = ts::index_to_coordinates(i, shape, 3);
-        cout << "index: " << i << endl;
-        cout << "corrdinates:\n";
-        for(auto x: vec){
-            cout << x << ", ";
-        }
-        cout << endl;
-        cout << "reverse: " << ts::coordinates_to_index(vec, shape, 3) << endl;
-        cout << endl;
+    Tensor ts = rand<int>(shape, 3);
+    cout << ts << endl;
+    auto sub_tss = ts::subtensors_at_dim(ts, 2);
+    for(auto sub_ts: sub_tss){
+        cout << sub_ts << endl;
     }
-
     return 0;
 }

@@ -155,10 +155,32 @@ size_t coordinates_to_index(vector<size_t> coordinates, int *shape, int dim){
     return index;
 }
 
+size_t coordinates_to_index_with_fixed_dim(
+        vector<size_t> coordinates, int *shape, int dim, int fixed_dim){
+    int copy_shape[dim];
+    for(int i = 0; i < dim; i++){
+        if(i == fixed_dim){
+            copy_shape[i] = 1;
+        }else{
+            copy_shape[i] = shape[i];
+        }
+    }
+    size_t index = 0;
+    size_t *acc_ptr = shape_to_acc(copy_shape, dim);
+    for(int i = 0; i < dim; i++){
+        if(i == fixed_dim){
+            index += acc_ptr[i] * 0;
+        }else{
+            index += acc_ptr[i] * coordinates[i];
+        }
+    }
+    return index;
+}
+
 size_t *shape_to_acc(int *shape, int dim){
     size_t acc[dim];
-    for(int i = dim; i >= 0; i--){
-        if(i == dim){
+    for(int i = dim - 1; i >= 0; i--){
+        if(i == dim - 1){
             acc[i] = 1;
         }else{
             acc[i] = shape[i + 1] * acc[i + 1];
@@ -166,6 +188,7 @@ size_t *shape_to_acc(int *shape, int dim){
     }
     return acc;
 }
+
 
 vector<size_t> index_to_coordinates(size_t index, int *shape, int dim){
     size_t acc[dim];
@@ -182,6 +205,76 @@ vector<size_t> index_to_coordinates(size_t index, int *shape, int dim){
     }
 
     return result;
+}
+
+
+/*
+ * Get the sub-tensors in the sub-dim of a given big tensor.
+ * e.g.
+ * - We want to get the sub-dim 2 of big tensor of shape{2, 3, '4', 5},
+ * thus the sub-tensor has shape {2, 3, 1, 5}.
+ *
+ * - Example with 3-dim.
+ *   Tensor big, with shape {2, 3, 4}:
+ *   [[ [1,   2,  3,  4],
+ *      [5,   6,  7,  7],
+ *      [9,  10, 11, 12] ,
+ *
+ *     [ [length 4]
+ *       [length 4]
+ *       [length 4] ]
+ *   ]]
+ *      Has totally 24 number.
+ *
+ *      The number 11(index 10) is in the 1st half-part,
+ *   then the 3rd line,
+ *   then the 3rd number.
+ *
+ *      Thus, its coordinate is (1, 3, 3)(or write in index (0, 2, 2)).
+ *
+ *      The function has implemented with the
+ *   coordinates_to_index and index_to_coordinates.
+ *
+ * - Example with high-dim.
+ * For the i-th data in big tensor with coordinate (a, b, 'c', d),
+ * the coordinate in the given sub dim, i.e. c, is just the id of the sub-tensor.
+ *   (e.g.)
+ *          To begin with, the index begin from 1.
+ *          The data in big tensor with coordinates (a, b, 2, d),
+ *      need toe be assigned to the second sub-tensor, with shape {2, 3, 1, 5}.
+ *          We need to assign the data to the 2-nd sub-tensor, thus we need to
+ *      get the sub-index where we should to assign in sub-tensor.
+ */
+vector<Tensor> subtensors_at_dim(Tensor &ts, int subdim){
+    int dim = ts.get_dimension();
+    int shape[dim];
+    int sub_shape[dim];
+    for(int i = 0; i < dim; i++){
+        shape[i] = ts.get_shape()[i];
+        sub_shape[i] = ts.get_shape()[i];
+    }
+    sub_shape[subdim] = 1;
+    vector<Tensor> subTensors;
+
+    for(int cnt_sub_ts = 0; cnt_sub_ts < shape[subdim]; cnt_sub_ts++){
+        subTensors.push_back(zeros(ts.get_dtype_id(), sub_shape, dim));
+    }
+
+    for(size_t i = 0; i < ts.get_total_size(); i++){
+        if(i == 13){
+
+        }
+        auto coordinates = index_to_coordinates(i, shape, dim);
+        size_t id_subtensor = coordinates[subdim];
+        size_t index_sub_data = coordinates_to_index_with_fixed_dim(
+                coordinates, shape, dim, subdim);
+
+        assign(subTensors[id_subtensor].data_ptr()[index_sub_data],
+               promote(ts.data_ptr()[i]),
+               ts.get_dtype_id());
+    }
+
+    return subTensors;
 }
 
 void Tensor::init_node(){

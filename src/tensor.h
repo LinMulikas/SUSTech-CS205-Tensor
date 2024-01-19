@@ -485,12 +485,30 @@ static Tensor zeros(int *arr, const int dim){
     return t;
 }
 
+static Tensor zeros(int dtype_id, int *arr, const int dim){
+    switch(dtype_id){
+        case 0:
+            return zeros<bool>(arr, dim);
+        case 1:
+            return zeros<int>(arr, dim);
+        case 2:
+            return zeros<float>(arr, dim);
+        case 3:
+            return zeros<double>(arr, dim);
+    }
+}
+
+
 size_t coordinates_to_index(vector<size_t> coordinates, int *shape, int dim);
+
+size_t coordinates_to_index_with_fixed_dim(
+        vector<size_t> coordinates, int *shape, int dim, int fixed_dim);
 
 size_t *shape_to_acc(int *shape, int dim);
 
 vector<size_t> index_to_coordinates(size_t index, int *shape, int dim);
 
+vector<Tensor> subtensors_at_dim(Tensor &ts, int subdim);
 
 /*
     zeros_like with exact type.
