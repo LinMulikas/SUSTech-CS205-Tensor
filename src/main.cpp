@@ -10,6 +10,7 @@ using grad::Node, grad::Variable, grad::AddNode;
 
 using std::cout, std::endl;
 
+
 int main(){
     // ? Autograd test
 
@@ -35,9 +36,6 @@ int main(){
     int shape[3]{2, 3, 4};
     Tensor ts = rand<int>(shape, 3);
     cout << ts << endl;
-    auto sub_tss = ts::subtensors_at_dim(ts, 2);
-    for(auto sub_ts: sub_tss){
-        cout << sub_ts << endl;
-    }
+    
     return 0;
 }

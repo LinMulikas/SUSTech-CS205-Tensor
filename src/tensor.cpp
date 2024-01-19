@@ -464,7 +464,23 @@ Tensor permute(Tensor tensor, int dim[]){
     return tensor.permute(dim);
 }
 
-Tensor sum(Tensor &ts, int dim);
+Tensor sum(Tensor &ts, int dim){
+    return ts.sum(dim);
+}
+
+Tensor mean(Tensor &ts, int dim){
+    return ts.mean(dim);
+}
+
+Tensor max(Tensor &ts, int dim){
+    return ts.max(dim);
+}
+
+Tensor min(Tensor &ts, int dim){
+    return ts.min(dim);
+}
+
+
 //mathoperator-begin
 
 Tensor Tensor::add(Tensor &that){
@@ -923,18 +939,31 @@ Tensor ts::Log2(ts::Tensor &ts){
     return ts::apply(ts, log2);
 }
 
-//sum,mean,max,min-begin
-Tensor stack(vector<Tensor> &set){
 
-    Tensor temp = set[0];
-    for(size_t i = 1; i < set.size(); i++){
+void test_dim_fn(Tensor &ts, Tensor(*fn)(Tensor &, int)){
+    for(int i = 0; i < ts.get_dimension(); i++){
+        cout << ">>>>>>> test <<<<<<<" << endl;
+        cout << fn(ts, i) << endl;
 
-        std::pair<Tensor, Tensor> pair = std::make_pair(temp, set[i]);
-
-        temp = cat(pair, 0);
-
+        cout << ">>>>>>> end test <<<<<<<" << endl;
     }
-    return temp;
+
+}
+
+void test_sum(Tensor &ts){
+    test_dim_fn(ts, ts::sum);
+}
+
+void test_mean(Tensor &ts){
+    test_dim_fn(ts, ts::mean);
+}
+
+void test_max(Tensor &ts){
+    test_dim_fn(ts, ts::max);
+}
+
+void test_min(Tensor &ts){
+    test_dim_fn(ts, ts::min);
 }
 
 Tensor Tensor::expansion_1d(){
@@ -951,21 +980,84 @@ Tensor Tensor::expansion_1d(){
     return t;
 }
 
-Tensor Tensor::mean(int dim){
+Tensor Tensor::sum(int dim){
+    std::cout << ">>> call of " << __func__ << " at dim " << dim << "<<<" << std::endl;
+    vector<Tensor> subtensors = ts::subtensors_at_dim(*this, dim);
+    Tensor result = zeros_like(subtensors[0]);
+    for(auto ts: subtensors){
+        result = result + ts;
+    }
+    return result;
+}
 
+Tensor Tensor::mean(int dim){
+    std::cout << ">>> call of " << __func__ << " at dim " << dim << " <<<" << std::endl;
+    vector<Tensor> subtensors = ts::subtensors_at_dim(*this, dim);
+    Tensor result = zeros_like(subtensors[0]);
+    for(auto ts: subtensors){
+        result = result + ts;
+    }
+    int size = subtensors.size();
+    VariantData vd = size;
+    return ts::div(result, vd);
 }
 
 Tensor Tensor::max(int dim){
-
+    std::cout << ">>> call of " << __func__ << " at dim " << dim << " <<<" << std::endl;
+    vector<Tensor> subtensors = ts::subtensors_at_dim(*this, dim);
+    Tensor result = zeros_like(subtensors[0]);
+    for(size_t i = 0; i < result.get_total_size(); i++){
+        double max_value{-INFINITY};
+        for(Tensor &subtensor: subtensors){
+            double value = promote(subtensor.data_ptr()[i]);
+            if(value > max_value){
+                max_value = value;
+            }
+        }
+        assign(result.data_ptr()[i], max_value, result.get_dtype_id());
+    }
+    return result;
 }
 
 Tensor Tensor::min(int dim){
-
+    std::cout << ">>> call of " << __func__ << " at dim " << dim << " <<<" << std::endl;
+    std::cout << ">>> call of " << __func__ << " at dim " << dim << " <<<" << std::endl;
+    vector<Tensor> subtensors = ts::subtensors_at_dim(*this, dim);
+    Tensor result = zeros_like(subtensors[0]);
+    for(size_t i = 0; i < result.get_total_size(); i++){
+        double min_value{INFINITY};
+        for(Tensor &subtensor: subtensors){
+            double value = promote(subtensor.data_ptr()[i]);
+            if(value < min_value){
+                min_value = value;
+            }
+        }
+        assign(result.data_ptr()[i], min_value, result.get_dtype_id());
+    }
+    return result;
 }
 
-Tensor Tensor::sum(int dim){
-
+void Tensor::test_dim_fn(Tensor (*fn)(Tensor &, int)){
+    ts::test_dim_fn(*this, fn);
 }
+
+void Tensor::test_sum(){
+    this->test_dim_fn(ts::sum);
+}
+
+void Tensor::test_mean(){
+    this->test_dim_fn(ts::mean);
+}
+
+
+void Tensor::test_max(){
+    this->test_dim_fn(ts::max);
+}
+
+void Tensor::test_min(){
+    this->test_dim_fn(ts::mean);
+}
+
 
 
 //

@@ -13,7 +13,7 @@
 
 namespace ts{
 using VariantData = std::variant<bool, int, float, double>;
-
+using std::cout, std::endl;
 using std::vector;
 using std::shared_ptr, std::make_shared;
 
@@ -71,6 +71,8 @@ private:
 
 
     void print(std::ostream &os, int index, int dim) const;
+
+    void test_dim_fn(Tensor(*fn)(Tensor &, int));
 
 public:
     // public autograd
@@ -323,36 +325,21 @@ public:
     }
 
 
+    void test_sum();
+
+    void test_mean();
+
+    void test_max();
+
+    void test_min();
+
     // Reduction operators
     // Shrink the zero dims of a tensor.
     Tensor shrink(Tensor &ts);
 
+
     // TODO: ?
-    static Tensor sum(Tensor &ts, vector<int> dims){
-        for(int dim: dims){
-            if(dim < 0 || dim >= ts.get_dimension()){
-                throw std::invalid_argument("Invalid dimension input.");
-            }
-        }
-
-        Tensor t = Tensor();
-        t.shape.reset(new int[ts.get_dimension()]);
-
-        std::sort(dims.begin(), dims.end());
-
-        int j = 0;
-        for(int i = 0; i < ts.dimension; i++){
-            if(j < dims.size()){
-                // Need to be added.
-                if(i == dims[j]){
-                    j++;
-                }
-            }else{
-                break;
-            }
-        }
-    }
-
+    static Tensor sum(Tensor &ts, vector<int> dims);
 
     friend Tensor operator+(Tensor &t1, Tensor &t2);
 
@@ -381,6 +368,24 @@ public:
 
     Tensor inv_pt() throw();
 };
+
+void test_dim_fn(Tensor &ts, Tensor(*fn)(Tensor &, int));
+
+void test_sum(Tensor &ts);
+
+void test_mean(Tensor &ts);
+
+void test_max(Tensor &ts);
+
+void test_min(Tensor &ts);
+
+Tensor sum(Tensor &ts, int dim);
+
+Tensor mean(Tensor &ts, int dim);
+
+Tensor max(Tensor &ts, int dim);
+
+Tensor min(Tensor &ts, int dim);
 
 
 // Math operators
