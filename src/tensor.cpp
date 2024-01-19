@@ -28,13 +28,13 @@ double promote(VariantData &vd){
     // std::cout << "promote" << std::endl;
     switch(vd.index()){
     case 0:
-        return (double)(*(std::get_if<0>(&vd)));
-    case 1:
-        return (double)(*(std::get_if<1>(&vd)));
-    case 2:
-        return (double)(*(std::get_if<2>(&vd)));
-    case 3:
-        return (double)(*(std::get_if<3>(&vd)));
+            return (double) (*(std::get_if<0>(&vd)));
+        case 1:
+            return (double) (*(std::get_if<1>(&vd)));
+        case 2:
+            return (double) (*(std::get_if<2>(&vd)));
+        case 3:
+            return (double) (*(std::get_if<3>(&vd)));
     }
     return 0;
 };
@@ -138,10 +138,9 @@ std::ostream &operator<<(std::ostream &os, const Tensor &t){
     return os;
 }
 
-void Tensor::init_node(bool require_grad){
-    if(require_grad == true){
-        _node = make_shared<grad::Variable>(grad::Variable(this));
-    }
+void Tensor::init_node(){
+    if(_node == nullptr)
+        _node = make_shared<grad::Variable>(grad::Variable(*this));
 }
 
 int Tensor::get_dimension() const{
@@ -412,7 +411,7 @@ Tensor add(Tensor &t1, Tensor &t2) throw(){
             double v2 = promote(t2.data_ptr()[i]);
             assign(result.data_ptr()[i], v1 + v2, tid_rst);
         }
-        result.set_node(make_shared<grad::Add_node>(grad::Add_node(t1.get_node_ptr(), t2.get_node_ptr())));
+        result.set_node(make_shared<grad::Add>(grad::Add(t1.node_ptr(), t2.node_ptr())));
         return result;
     
 }
@@ -462,7 +461,7 @@ Tensor sub(Tensor &t1, Tensor &t2) throw(){
             double v2 = promote(t2.data_ptr()[i]);
             assign(result.data_ptr()[i], v1 - v2, tid_rst);
         }
-        result.set_node(make_shared<grad::Add_node>(grad::Add_node(t1.get_node_ptr(), t2.get_node_ptr())));
+        result.set_node(make_shared<grad::Add>(grad::Add(t1.node_ptr(), t2.node_ptr())));
         return result;
     
 }
@@ -483,7 +482,7 @@ Tensor mul_pt(Tensor &t1, Tensor &t2) throw(){
             double v2 = promote(t2.data_ptr()[i]);
             assign(result.data_ptr()[i], v1 * v2, tid_rst);
         }
-        result.set_node(make_shared<grad::Add_node>(grad::Add_node(t1.get_node_ptr(), t2.get_node_ptr())));
+        result.set_node(make_shared<grad::Add>(grad::Add(t1.node_ptr(), t2.node_ptr())));
         return result;
     
 }
@@ -506,7 +505,7 @@ Tensor div(Tensor &t1, Tensor &t2) throw(){
             if(v2==0) throw std::invalid_argument("The divider is not valid.");
             assign(result.data_ptr()[i], v1 / v2, tid_rst);
         }
-        result.set_node(make_shared<grad::Add_node>(grad::Add_node(t1.get_node_ptr(), t2.get_node_ptr())));
+        result.set_node(make_shared<grad::Add>(grad::Add(t1.node_ptr(), t2.node_ptr())));
         return result;
     
 }
@@ -667,6 +666,126 @@ Tensor operator<=(Tensor& t1,Tensor &t2) {
     return ne(t1,t2);
 }
 //comparator-end
+
+
+//sum,mean,max,min-begin
+Tensor stack(vector<Tensor>& set)
+{
+
+    Tensor temp=set[0];
+    for(size_t i=1;i<set.size();i++)
+    {
+
+        std::pair<Tensor,Tensor> pair=std::make_pair(temp,set[i]);
+       
+        temp=cat(pair,0);
+       
+    }
+    return temp;
+}
+
+Tensor Tensor::expansion_1d(){
+    Tensor t=Tensor();
+    t.dimension=dimension;
+    t.shape.reset(new int[t.dimension]);
+    t.shape[0]=1;
+    t.total_size=total_size;
+    for(size_t i=0;i<dimension;i++)
+    {
+       t.shape[i+1]=shape[i];
+    }
+    t.data=data;
+
+    return t;
+}
+Tensor Tensor::mean(int dim){
+    
+}
+
+Tensor Tensor::max(int dim){
+        
+}
+
+Tensor Tensor::min(int dim)
+{
+     
+}
+
+Tensor Tensor::sum(int dim)
+{
+
+    
+
+        
+    
+    if(dim==0){
+     Tensor t=Tensor();
+     t.dimension=dimension-1;
+     t.shape.reset(new int[t.dimension]);
+     int skip_number=1;
+     for(int i=0;i<t.dimension;i++)
+     {
+        skip_number*=shape[i+1];
+        t.shape[i]=shape[i+1];
+     }
+    int id=this->get_dtype_id();
+    int new_total_size=skip_number;
+    t.total_size=new_total_size;
+    if(dimension==1){
+        t.dimension=1;
+        t.shape.reset(new int[1]);
+        t.shape[0]=1;
+        t.total_size=1;
+    }
+    t.data=new VariantData[new_total_size];
+     
+
+     for(size_t i=0;i<new_total_size;i++)
+     {
+       double temp=0;
+       for(size_t j=0;j<shape[dim];j++)
+       {
+         double var=promote(data_ptr()[j*skip_number+i]);
+         temp+=var;
+       }
+       
+       assign(t.data_ptr()[i],temp,id);
+     }
+     return t;
+     
+    }else 
+    {
+        vector<Tensor> vec;
+        Tensor temp;
+        for(int i=0;i<shape[0];i++)
+        {
+            temp=(*this)(i).sum(dim-1);
+            
+            vec.push_back(temp.expansion_1d());
+        }
+        // for(int i=0;i<3;i++)
+        // {
+        //     std::cout<<vec[i]<<std::endl;
+      //  }
+        temp=stack(vec);
+        vec.clear();
+
+        return temp;
+
+
+
+    }
+    
+
+      
+}
+
+
+
+
+
+//sum,mean,max,min-end
+
 
 
 }

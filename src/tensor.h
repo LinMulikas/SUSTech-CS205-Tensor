@@ -68,12 +68,15 @@ private:
 
 public:
     // public autograd
-    void set_require_grad(bool require);
+   
     void set_node(shared_ptr<grad::Node>);
 
-    void init_node(bool require);
+    void init_node();
+    grad::Node &node(){
+        return *node_ptr();
+    }
 
-    shared_ptr<grad::Node> get_node_ptr(){
+    shared_ptr<grad::Node> node_ptr(){
         return _node;
     }
 
@@ -87,12 +90,21 @@ public:
    Tensor div(VariantData vd);
 
    //comparator
-   Tensor eq(Tensor &t2);
-   Tensor ne(Tensor &t2);
-   Tensor ge(Tensor &t2);
-   Tensor gt(Tensor &t2);
-   Tensor le(Tensor &t2);
-   Tensor lt(Tensor &t2);
+   Tensor eq(Tensor &t2) throw();
+   Tensor ne(Tensor &t2) throw();
+   Tensor ge(Tensor &t2) throw();
+   Tensor gt(Tensor &t2) throw();
+   Tensor le(Tensor &t2) throw();
+   Tensor lt(Tensor &t2) throw();
+
+   //dim-operator
+   Tensor expansion_1d();
+   Tensor mean(int dim);
+   Tensor sum(int dim);
+   Tensor min(int dim);
+   Tensor max(int dim);
+
+
 
 
     static VariantData copy_tile(VariantData *src, Tensor *dst, int idx, int *src_shape, int dim);
@@ -112,7 +124,7 @@ public:
         t.data = t.data_shared.get();
         // default type float.
         t.dtype_id = 2;
-        t.init_node(global_require_grad);
+        t.init_node();
         return t;
     }
 
@@ -131,7 +143,7 @@ public:
 
         // default type float.
         t.dtype_id = 2;
-        t.init_node(global_require_grad);
+        t.init_node();
         return t;
     }
 
@@ -153,7 +165,7 @@ public:
 
         t.dtype_id = dtype_id_from<T>();
 
-        t.init_node(global_require_grad);
+        t.init_node();
         return t;
     }
 
@@ -204,7 +216,7 @@ public:
         data = data_shared.get();
         VariantData *pointer = data;
         copyData(arr, pointer, data_shared.get() + total_size);
-        init_node(global_require_grad);
+        init_node();
     }
 
     Tensor(int type_id);
@@ -242,7 +254,7 @@ public:
         for(int i = 0; i < t.dimension; i++){
             t.shape[i] = shape[i];
         }
-        t.init_node(global_require_grad);
+        t.init_node();
         return t;
     }
 
@@ -309,6 +321,9 @@ static  Tensor eye(int *size, const int dim){
         }
     }
 
+
+
+
     friend Tensor operator+(Tensor &t1, Tensor &t2);
      friend Tensor operator+(Tensor &t1, VariantData t2);
     friend Tensor operator-(Tensor &t1,VariantData a);
@@ -330,7 +345,7 @@ static  Tensor eye(int *size, const int dim){
 
 
 // Math operators
-//static Tensor add(Tensor&t1, VariantData vd)throw();
+Tensor add(Tensor&t1, VariantData vd)throw();
 Tensor add(Tensor &t1, Tensor &t2) throw();
 Tensor sub(Tensor &t1, Tensor &t2) throw();
 Tensor sub(Tensor &t1,VariantData vd) throw();
@@ -406,7 +421,7 @@ static Tensor zeros(int *arr, const int dim){
 static Tensor zeros_like(Tensor &ts){
     switch(ts.get_dtype_id()){
     case 0:
-        return zeros<double>(ts.get_shape(), ts.get_dimension());
+        return zeros<bool>(ts.get_shape(), ts.get_dimension());
     case 1:
         return zeros<int>(ts.get_shape(), ts.get_dimension());
     case 2:
@@ -539,6 +554,18 @@ static Tensor view(Tensor tensor, int(&shape)[N]){
 //         }
 //     }
 // }
+
+
+//sum,mean,min,max-begin
+
+
+
+
+
+
+
+
+//sum,mean,min,max-end
 
 }
 

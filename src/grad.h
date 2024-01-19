@@ -1,8 +1,6 @@
 #pragma once
-
 #include <memory>
 #include <iostream>
-
 namespace ts{
 class Tensor;
 
@@ -64,25 +62,25 @@ public:
     }
 
     friend ostream &operator<<(ostream &os, Node &node);
-
     friend Node operator+(Node &node1, Node &node2);
 
     virtual void eval();
-
     virtual ts::Tensor gradTo(Node &that) throw();
 };
 
 class Variable : public Node{
 public:
+    Variable(ts::Tensor *ts){
+        value = make_shared<ts::Tensor>(*ts);
+    }
 
     Variable(ts::Tensor &ts){
         value = make_shared<ts::Tensor>(ts);
-    }
+    };
 
     Variable(){};
 
     virtual void eval(){};
-
     virtual ts::Tensor gradTo(Node &that) throw();
 
 };
@@ -93,9 +91,7 @@ public:
 class Add : public Node{
 public:
     Add(shared_ptr<Node> node1, shared_ptr<Node> node2);
-
     Add(Node &a, Node &b);
-
     Add(Node a){
         value = a.value_ptr();
         grad = a.grad_ptr();
@@ -104,14 +100,13 @@ public:
     }
 
     virtual void eval() throw();
-
     virtual ts::Tensor gradTo(Node &that) throw();
 
 };
 
+
 ts::Tensor autograd(ts::Tensor &in, ts::Tensor &out) throw();
 
 ts::Tensor autograd(Node &in, Node &out) throw();
-
 };
 

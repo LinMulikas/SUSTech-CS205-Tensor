@@ -6,9 +6,9 @@ using ts::Tensor, ts::zeros, ts::rand;
 
 using ts::VariantData;
 
-using grad::Variable, grad::Add;
+// using grad::Variable, grad::Add;
 
-using grad::Variable, grad::Add;
+// using grad::Variable, grad::Add;
 
 using std::cout, std::endl;
 
@@ -19,7 +19,8 @@ int main(){
         Add test
     */
 
-    int shape[2] = {3, 2};
+    int shape[3] = {2, 2,2};
+    
 
     Tensor ts1 = rand<int>(shape);
     Tensor ts2 = rand<double>(shape);
@@ -27,8 +28,8 @@ int main(){
     cout << ts1 << endl;
     cout << ts2 << endl;
 
-    Tensor grad1 = grad::autograd(ts1, ts3);
-    cout << grad1 << endl;
+    cout<<ts1.sum(1)<<endl;
+    
 
     return 0;
 }
