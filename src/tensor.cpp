@@ -487,14 +487,6 @@ Tensor Tensor::add(Tensor &that){
     return ts::add(*(this), that);
 }
 
-Tensor ts::add(ts::Tensor &t1, ts::VariantData &vd) throw(){
-    Tensor t2 = zeros_like(t1);
-    for(size_t i = 0; i < t1.get_total_size(); i++){
-        t2.data_ptr()[i] = vd;
-    }
-    return add(t1, t2);
-}
-
 Tensor Tensor::add(VariantData &vd){
     return ts::add(*(this), vd);
 }
@@ -508,7 +500,7 @@ Tensor Tensor::mul_pt(Tensor &ts){
 }
 
 Tensor Tensor::div(Tensor &ts){
-    return ts::div(*(this), ts);
+    return ts::div_pt_with_grad(*(this), ts);
 }
 
 
@@ -525,11 +517,11 @@ Tensor Tensor::div(VariantData ts){
 }
 
 Tensor operator+(Tensor &ts1, Tensor &ts2){
-    if(ts1._require_grad || ts2._require_grad){
-        return add_with_grad(ts1, ts2);
-    }else{
-        return add(ts1, ts2);
-    }
+    return ts::add(ts1, ts2);
+}
+
+Tensor operator+(Tensor &t1, VariantData t2){
+    return Tensor();
 }
 
 Tensor operator-(Tensor &ts1, Tensor &ts2){
@@ -572,6 +564,42 @@ void is_shape_valid(Tensor &t1, Tensor &t2) throw(){
     }
 }
 
+Tensor add(Tensor &ts1, Tensor &ts2) throw(){
+    if(ts1.get_require_grad() || ts2.get_require_grad()){
+        return add_with_grad(ts1, ts2);
+    }else{
+        return add_no_grad(ts1, ts2);
+    }
+}
+
+Tensor ts::add(ts::Tensor &t1, ts::VariantData &vd) throw(){
+    Tensor t2 = zeros_like(t1);
+    for(size_t i = 0; i < t1.get_total_size(); i++){
+        t2.data_ptr()[i] = vd;
+    }
+    return add(t1, t2);
+}
+
+Tensor add_no_grad(Tensor &t1, Tensor &t2) throw(){
+    is_shape_valid(t1, t2);
+
+    // Type promote
+    Tensor result;
+
+    int tid_1 = t1.get_dtype_id();
+    int tid_2 = t2.get_dtype_id();
+    int tid_rst = std::max(tid_1, tid_2);
+
+    if(tid_rst == tid_1)result = zeros_like(t1);
+    else result = zeros_like(t2);
+
+    for(size_t i = 0; i < result.get_total_size(); i++){
+        double v1 = promote(t1.data_ptr()[i]);
+        double v2 = promote(t2.data_ptr()[i]);
+        assign(result.data_ptr()[i], v1 + v2, tid_rst);
+    }
+    return result;
+}
 
 Tensor add_with_grad(Tensor &t1, Tensor &t2) throw(){
     is_shape_valid(t1, t2);
@@ -593,12 +621,29 @@ Tensor add_with_grad(Tensor &t1, Tensor &t2) throw(){
     }
     t1.init_node();
     t2.init_node();
-    result.set_node(make_shared<grad::AddNode>(grad::AddNode(t1.node_ptr(), t2.node_ptr())));
+    result.set_node(
+            make_shared<grad::AddNode>(
+                    grad::AddNode(t1.node_ptr(), t2.node_ptr())));
     return result;
-
 }
 
-Tensor add(Tensor &t1, Tensor &t2) throw(){
+Tensor sub(Tensor &ts1, Tensor &ts2) throw(){
+    if(ts1.get_require_grad() || ts2.get_require_grad()){
+        return sub_with_grad(ts1, ts2);
+    }else{
+        return sub_no_grad(ts1, ts2);
+    }
+}
+
+Tensor ts::sub(ts::Tensor &t1, ts::VariantData &vd) throw(){
+    Tensor t2 = zeros_like(t1);
+    for(size_t i = 0; i < t1.get_total_size(); i++){
+        t2.data_ptr()[i] = vd;
+    }
+    return sub(t1, t2);
+}
+
+Tensor sub_no_grad(Tensor &t1, Tensor &t2) throw(){
     is_shape_valid(t1, t2);
 
     // Type promote
@@ -614,7 +659,7 @@ Tensor add(Tensor &t1, Tensor &t2) throw(){
     for(size_t i = 0; i < result.get_total_size(); i++){
         double v1 = promote(t1.data_ptr()[i]);
         double v2 = promote(t2.data_ptr()[i]);
-        assign(result.data_ptr()[i], v1 + v2, tid_rst);
+        assign(result.data_ptr()[i], v1 - v2, tid_rst);
     }
     return result;
 }
@@ -639,55 +684,31 @@ Tensor sub_with_grad(Tensor &t1, Tensor &t2) throw(){
     }
     t1.init_node();
     t2.init_node();
-    result.set_node(make_shared<grad::SubNode>(grad::SubNode(t1.node_ptr(), t2.node_ptr())));
-
+    result.set_node(
+            make_shared<grad::SubNode>(
+                    grad::SubNode(t1.node_ptr(), t2.node_ptr())));
     return result;
 }
 
-
-Tensor sub(Tensor &t1, Tensor &t2) throw(){
-    is_shape_valid(t1, t2);
-
-    // Type promote
-    Tensor result;
-
-    int tid_1 = t1.get_dtype_id();
-    int tid_2 = t2.get_dtype_id();
-    int tid_rst = std::max(tid_1, tid_2);
-
-    if(tid_rst == tid_1)result = zeros_like(t1);
-    else result = zeros_like(t2);
-
-    for(size_t i = 0; i < result.get_total_size(); i++){
-        double v1 = promote(t1.data_ptr()[i]);
-        double v2 = promote(t2.data_ptr()[i]);
-        assign(result.data_ptr()[i], v1 - v2, tid_rst);
+Tensor mul_pt(Tensor &ts1, Tensor &ts2) throw(){
+    if(ts1.get_require_grad() || ts2.get_require_grad()){
+        return mul_pt_with_grad(ts1, ts2);
+    }else{
+        return mul_pt_no_grad(ts1, ts2);
     }
-    return result;
 }
 
-
-Tensor sub(Tensor &t1, VariantData vd) throw(){
+Tensor ts::mul_pt(ts::Tensor &t1, ts::VariantData &vd) throw(){
     Tensor t2 = zeros_like(t1);
     for(size_t i = 0; i < t1.get_total_size(); i++){
         t2.data_ptr()[i] = vd;
     }
-
-    return sub(t1, t2);
-}
-
-Tensor mul_pt(Tensor &t1, VariantData vd) throw(){
-    Tensor t2 = zeros_like(t1);
-    for(size_t i = 0; i < t1.get_total_size(); i++){
-        t2.data_ptr()[i] = vd;
-    }
-
     return mul_pt(t1, t2);
 }
 
-
-Tensor mul_pt(Tensor &t1, Tensor &t2) throw(){
+Tensor mul_pt_no_grad(Tensor &t1, Tensor &t2) throw(){
     is_shape_valid(t1, t2);
+
     // Type promote
     Tensor result;
 
@@ -703,12 +724,12 @@ Tensor mul_pt(Tensor &t1, Tensor &t2) throw(){
         double v2 = promote(t2.data_ptr()[i]);
         assign(result.data_ptr()[i], v1 * v2, tid_rst);
     }
-    result.set_node(make_shared<grad::AddNode>(grad::AddNode(t1.node_ptr(), t2.node_ptr())));
     return result;
 }
 
-Tensor div(Tensor &t1, Tensor &t2) throw(){
+Tensor mul_pt_with_grad(Tensor &t1, Tensor &t2) throw(){
     is_shape_valid(t1, t2);
+
     // Type promote
     Tensor result;
 
@@ -722,21 +743,77 @@ Tensor div(Tensor &t1, Tensor &t2) throw(){
     for(size_t i = 0; i < result.get_total_size(); i++){
         double v1 = promote(t1.data_ptr()[i]);
         double v2 = promote(t2.data_ptr()[i]);
-        if(v2 == 0) throw std::invalid_argument("The divider is not valid.");
-        assign(result.data_ptr()[i], v1 / v2, tid_rst);
+        assign(result.data_ptr()[i], v1 * v2, tid_rst);
     }
-    result.set_node(make_shared<grad::AddNode>(grad::AddNode(t1.node_ptr(), t2.node_ptr())));
+    t1.init_node();
+    t2.init_node();
+    result.set_node(
+            make_shared<grad::MulPtNode>(
+                    grad::MulPtNode(t1.node_ptr(), t2.node_ptr())));
     return result;
-
 }
 
-Tensor div(Tensor &t1, VariantData vd) throw(){
+Tensor div_pt(Tensor &ts1, Tensor &ts2) throw(){
+    if(ts1.get_require_grad() || ts2.get_require_grad()){
+        return div_pt_with_grad(ts1, ts2);
+    }else{
+        return div_pt_no_grad(ts1, ts2);
+    }
+}
+
+Tensor ts::div_pt(ts::Tensor &t1, ts::VariantData &vd) throw(){
     Tensor t2 = zeros_like(t1);
     for(size_t i = 0; i < t1.get_total_size(); i++){
         t2.data_ptr()[i] = vd;
     }
+    return div_pt(t1, t2);
+}
 
-    return div(t1, t2);
+Tensor div_pt_no_grad(Tensor &t1, Tensor &t2) throw(){
+    is_shape_valid(t1, t2);
+
+    // Type promote
+    Tensor result;
+
+    int tid_1 = t1.get_dtype_id();
+    int tid_2 = t2.get_dtype_id();
+    int tid_rst = std::max(tid_1, tid_2);
+
+    if(tid_rst == tid_1)result = zeros_like(t1);
+    else result = zeros_like(t2);
+
+    for(size_t i = 0; i < result.get_total_size(); i++){
+        double v1 = promote(t1.data_ptr()[i]);
+        double v2 = promote(t2.data_ptr()[i]);
+        assign(result.data_ptr()[i], v1 / v2, tid_rst);
+    }
+    return result;
+}
+
+Tensor div_pt_with_grad(Tensor &t1, Tensor &t2) throw(){
+    is_shape_valid(t1, t2);
+
+    // Type promote
+    Tensor result;
+
+    int tid_1 = t1.get_dtype_id();
+    int tid_2 = t2.get_dtype_id();
+    int tid_rst = std::max(tid_1, tid_2);
+
+    if(tid_rst == tid_1)result = zeros_like(t1);
+    else result = zeros_like(t2);
+
+    for(size_t i = 0; i < result.get_total_size(); i++){
+        double v1 = promote(t1.data_ptr()[i]);
+        double v2 = promote(t2.data_ptr()[i]);
+        assign(result.data_ptr()[i], v1 / v2, tid_rst);
+    }
+    t1.init_node();
+    t2.init_node();
+    result.set_node(
+            make_shared<grad::MulPtNode>(
+                    grad::DivPtNode(t1.node_ptr(), t2.node_ptr())));
+    return result;
 }
 //math-operator end
 
@@ -892,9 +969,7 @@ Tensor operator!=(Tensor &t1, Tensor &t2){
     return ne(t1, t2);
 }
 
-Tensor operator+(Tensor &t1, VariantData t2){
-    return Tensor();
-}
+
 //comparator-end
 
 
@@ -920,25 +995,44 @@ Tensor ts::apply(Tensor &ts, double (*fn)(double)){
 }
 
 Tensor ts::Sin(ts::Tensor &ts){
-    return ts::apply(ts, sin);
+    Tensor result = ts::apply(ts, sin);
+    if(ts.get_require_grad()){
+        result.set_node(make_shared<grad::SinNode>(ts));
+    }
+    return result;
+}
+
+Tensor ts::Sin_no_grad(ts::Tensor &ts){
+    Tensor result = ts::apply(ts, sin);
+    if(ts.get_require_grad()){
+        result.set_node(make_shared<grad::SinNode>(ts));
+    }
+    return result;
 }
 
 Tensor ts::Cos(ts::Tensor &ts){
-    return ts::apply(ts, sin);
+    Tensor result = ts::apply(ts, cos);
+    if(ts.get_require_grad()){
+        result.set_node(make_shared<grad::CosNode>(ts));
+    }
+    return result;
 }
 
 Tensor ts::Exp(ts::Tensor &ts){
-    return ts::apply(ts, exp);
+    Tensor result = ts::apply(ts, exp);
+    if(ts.get_require_grad()){
+        result.set_node(make_shared<grad::ExpNode>(ts));
+    }
+    return result;
 }
 
 Tensor ts::Ln(ts::Tensor &ts){
-    return ts::apply(ts, log);
+    Tensor result = ts::apply(ts, log);
+    if(ts.get_require_grad()){
+        result.set_node(make_shared<grad::LnNode>(ts));
+    }
+    return result;
 }
-
-Tensor ts::Log2(ts::Tensor &ts){
-    return ts::apply(ts, log2);
-}
-
 
 void test_dim_fn(Tensor &ts, Tensor(*fn)(Tensor &, int)){
     for(int i = 0; i < ts.get_dimension(); i++){

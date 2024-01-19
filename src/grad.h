@@ -1,4 +1,5 @@
 #pragma once
+
 #include <memory>
 #include <iostream>
 
@@ -64,6 +65,7 @@ public:
     }
 
     friend ostream &operator<<(ostream &os, Node &node);
+
     friend Node operator+(Node &node1, Node &node2);
 
     virtual void eval();
@@ -102,7 +104,6 @@ public:
     virtual void eval() throw();
 
     virtual grad::Node gradTo(Node &that) throw();
-
 };
 
 class SubNode : public Node{
@@ -123,6 +124,45 @@ public:
     virtual grad::Node gradTo(Node &that) throw();
 };
 
+class MulPtNode : public Node{
+public:
+    MulPtNode(shared_ptr<Node> node1, shared_ptr<Node> node2);
+
+    MulPtNode(Node &a, Node &b);
+
+    MulPtNode(Node a){
+        value = a.value_ptr();
+        grad = a.grad_ptr();
+        parents = a.parents_ptr();
+        children = a.children_ptr();
+    }
+
+    virtual void eval() throw();
+
+    virtual grad::Node gradTo(Node &that) throw();
+
+};
+
+class DivPtNode : public Node{
+public:
+    DivPtNode(shared_ptr<Node> node1, shared_ptr<Node> node2);
+
+    DivPtNode(Node &a, Node &b);
+
+    DivPtNode(Node a){
+        value = a.value_ptr();
+        grad = a.grad_ptr();
+        parents = a.parents_ptr();
+        children = a.children_ptr();
+    }
+
+    virtual void eval() throw();
+
+    virtual grad::Node gradTo(Node &that) throw();
+
+};
+
+
 class SinNode : public Node{
 public:
     SinNode(Node &node);
@@ -134,8 +174,47 @@ public:
     virtual void eval() throw();
 
     virtual grad::Node gradTo(Node &that) throw();
-
 };
+
+class CosNode : public Node{
+public:
+    CosNode(Node &node);
+
+    CosNode(ts::Tensor &ts);
+
+    CosNode(){};
+
+    virtual void eval() throw();
+
+    virtual grad::Node gradTo(Node &that) throw();
+};
+
+class ExpNode : public Node{
+public:
+    ExpNode(Node &node);
+
+    ExpNode(ts::Tensor &ts);
+
+    ExpNode(){};
+
+    virtual void eval() throw();
+
+    virtual grad::Node gradTo(Node &that) throw();
+};
+
+class LnNode : public Node{
+public:
+    LnNode(Node &node);
+
+    LnNode(ts::Tensor &ts);
+
+    LnNode(){};
+
+    virtual void eval() throw();
+
+    virtual grad::Node gradTo(Node &that) throw();
+};
+
 
 grad::Node autograd(ts::Tensor &in, ts::Tensor &out) throw();
 

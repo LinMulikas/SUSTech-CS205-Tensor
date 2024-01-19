@@ -96,7 +96,7 @@ void AddNode::eval() throw(){
 //        cout << "test" << endl;
 //        cout << ts1 << endl;
 //        cout << ts2 << endl;
-        value = make_shared<ts::Tensor>(ts::add(ts1, ts2));
+        value = make_shared<ts::Tensor>(ts::add_no_grad(ts1, ts2));
     }
 }
 
@@ -132,7 +132,7 @@ void SubNode::eval() throw(){
         // The parents node must be size 2.
         ts::Tensor &ts1 = parents[0]->getTensor();
         ts::Tensor &ts2 = parents[1]->getTensor();
-        value = make_shared<ts::Tensor>(ts::sub(ts1, ts2));
+        value = make_shared<ts::Tensor>(ts::sub_no_grad(ts1, ts2));
     }
 }
 
@@ -145,15 +145,55 @@ grad::Node SubNode::gradTo(Node &that) throw(){
 }
 
 /*
+    MulPtNode implement
+*/
+
+MulPtNode::MulPtNode(shared_ptr<Node> node1, shared_ptr<Node> node2){
+    parents.push_back(node1);
+    parents.push_back(node2);
+}
+
+MulPtNode::MulPtNode(Node &node1, Node &node2){
+    // std::cout << "Test AddNode constructor." << std::endl;
+    parents.push_back(make_shared<Node>(node1));
+    parents.push_back(make_shared<Node>(node2));
+}
+
+void MulPtNode::eval() throw(){
+    // cout << "test AddNode::eval" << endl;
+    if(value == nullptr){
+        for(shared_ptr<Node> node: parents){
+            node->eval();
+        }
+        // The parents node must be size 2.
+        ts::Tensor &ts1 = parents[0]->getTensor();
+        ts::Tensor &ts2 = parents[1]->getTensor();
+//        cout << "test" << endl;
+//        cout << ts1 << endl;
+//        cout << ts2 << endl;
+        value = make_shared<ts::Tensor>(ts::mul_pt_no_grad(ts1, ts2));
+    }
+}
+
+grad::Node MulPtNode::gradTo(Node &that) throw(){
+    grad::Node lhs = parents[0]->gradTo(that);
+    grad::Node rhs = parents[1]->gradTo(that);
+    grad::MulPtNode result{lhs, rhs};
+    result.eval();
+    return result;
+}
+
+
+/*
  * Sin
  */
 
 SinNode::SinNode(Node &node){
-    value = make_shared<ts::Tensor>(ts::Sin(*node.value_ptr()));
+    value = make_shared<ts::Tensor>(ts::Sin_no_grad(*node.value_ptr()));
 }
 
 SinNode::SinNode(ts::Tensor &tensor){
-    value = make_shared<ts::Tensor>(ts::Sin(tensor));
+    value = make_shared<ts::Tensor>(ts::Sin_no_grad(tensor));
 }
 
 void SinNode::eval() throw(){
@@ -161,14 +201,47 @@ void SinNode::eval() throw(){
         parents[0]->eval();
         // The parents node must be size 2.
         ts::Tensor &tensor = parents[0]->getTensor();
-        value = make_shared<ts::Tensor>(ts::Sin(tensor));
+        value = make_shared<ts::Tensor>(ts::Sin_no_grad(tensor));
     }
 }
 
 grad::Node SinNode::gradTo(grad::Node &that) throw(){
-//    return ts::Cos(*this->value) * this->parents[0]->gradTo(that);
+    grad::Node lhs{*parents[0]};
+    grad::CosNode rhs{*parents[0]};
+    grad::MulPtNode result{lhs, rhs};
+    result.eval();
+    return result;
 }
 
+/*
+ * Cos
+ */
+
+CosNode::CosNode(Node &node){
+    value = make_shared<ts::Tensor>(ts::Sin_no_grad(*node.value_ptr()));
+}
+
+CosNode::CosNode(ts::Tensor &tensor){
+    value = make_shared<ts::Tensor>(ts::Sin_no_grad(tensor));
+}
+
+void CosNode::eval() throw(){
+    if(value == nullptr){
+        parents[0]->eval();
+        // The parents node must be size 2.
+        ts::Tensor &tensor = parents[0]->getTensor();
+        value = make_shared<ts::Tensor>(ts::Cos_no_grad(tensor));
+    }
+}
+
+grad::Node CosNode::gradTo(grad::Node &that) throw(){
+    grad::Node lhs{*parents[0]};
+    grad::SinNode rhs{*parents[0]};
+    // TODO
+    grad::MulPtNode result{lhs, rhs};
+    result.eval();
+    return result;
+}
 
 /*
  * Autograd implement

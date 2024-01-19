@@ -82,6 +82,10 @@ public:
         _require_grad = grad;
     }
 
+    bool get_require_grad(){
+        return _require_grad;
+    }
+
     void require_grad(){
         this->set_grad(true);
     }
@@ -394,13 +398,20 @@ Tensor apply(Tensor &ts, double(*fn)(double));
 
 Tensor Sin(Tensor &ts);
 
+Tensor Sin_no_grad(ts::Tensor &ts);
+
 Tensor Cos(Tensor &ts);
+
+Tensor Cos_no_grad(Tensor &ts);
+
 
 Tensor Exp(ts::Tensor &ts);
 
+Tensor Exp_no_grad(ts::Tensor &ts);
+
 Tensor Ln(ts::Tensor &ts);
 
-Tensor Log2(Tensor &ts);
+Tensor Ln_no_grad(ts::Tensor &ts);
 
 Tensor Pow(Tensor &ts, unsigned int n);
 
@@ -412,19 +423,31 @@ Tensor add(Tensor &t1, VariantData &t2) throw();
 
 Tensor add_with_grad(Tensor &t1, Tensor &t2) throw();
 
-Tensor sub_with_grad(Tensor &t1, Tensor &t2) throw();
+Tensor add_no_grad(Tensor &t1, Tensor &t2) throw();
 
 Tensor sub(Tensor &t1, Tensor &t2) throw();
 
-Tensor sub(Tensor &t1, VariantData vd) throw();
+Tensor sub(Tensor &t1, VariantData &t2) throw();
+
+Tensor sub_with_grad(Tensor &t1, Tensor &t2) throw();
+
+Tensor sub_no_grad(Tensor &t1, Tensor &t2) throw();
 
 Tensor mul_pt(Tensor &t1, Tensor &t2) throw();
 
-Tensor mul_pt(Tensor &t1, VariantData vd) throw();
+Tensor mul_pt(Tensor &t1, VariantData &t2) throw();
 
-Tensor div(Tensor &t1, Tensor &t2) throw();
+Tensor mul_pt_with_grad(Tensor &t1, Tensor &t2) throw();
 
-Tensor div(Tensor &t1, VariantData vd) throw();
+Tensor mul_pt_no_grad(Tensor &t1, Tensor &t2) throw();
+
+Tensor div_pt(Tensor &t1, Tensor &t2) throw();
+
+Tensor div_pt(Tensor &t1, VariantData &t2) throw();
+
+Tensor div_pt_with_grad(Tensor &t1, Tensor &t2) throw();
+
+Tensor div_pt_no_grad(Tensor &t1, Tensor &t2) throw();
 
 Tensor eq(Tensor &t1, Tensor &t2) throw();
 
