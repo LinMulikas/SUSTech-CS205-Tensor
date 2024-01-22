@@ -314,7 +314,7 @@ Tensor Tensor::operator()(int idx){
         t.dimension = 1;
     }else t.dimension = dimension - 1;
     t.shape.reset(new int[t.dimension]);
-
+   
     for(int i = 0; i < t.dimension; i++){
         if(dimension == 1){
             t.shape[i] = 1;
@@ -325,6 +325,7 @@ Tensor Tensor::operator()(int idx){
     t.total_size = total_size / shape[0];
 
     t.data = t.total_size * idx + data;
+    
     return t;
 }
 
@@ -483,6 +484,17 @@ Tensor min(Tensor &ts, int dim){
 
 //mathoperator-begin
 
+Tensor stack(vector<Tensor> vec)
+{
+    Tensor temp=vec[0];
+    for(size_t i=1;i<vec.size();i++)
+    {
+        std::pair<Tensor,Tensor> pairs=std::make_pair(temp,vec[i]);
+        temp=cat(pairs,0);
+    }
+    return temp;
+
+}
 Tensor Tensor::add(Tensor &that){
     return ts::add(*(this), that);
 }
@@ -562,6 +574,72 @@ void is_shape_valid(Tensor &t1, Tensor &t2) throw(){
             }
         }
     }
+}
+Tensor mul_dot_2d(Tensor &t1,Tensor &t2)
+{      Tensor t=Tensor();
+       int m=t1.get_shape()[0];
+       int n=t2.get_shape()[1];
+       int k=t1.get_shape()[1];
+       t.dimension=t1.get_dimension();
+       t.shape.reset(new int[t.dimension]);
+       t.total_size=m*n;
+       t.shape[0]=m;
+       t.shape[1]=n;
+       
+       t.data=new VariantData[t.total_size];
+       for(int i=0;i<m;i++)
+       {
+        for(int j=0;j<n;j++)
+        {
+            double temp=0;
+            for(int s=0;s<k;s++)
+            {
+                double v1=promote(t1.data_ptr()[i*k+s]);
+                double v2=promote(t2.data_ptr()[s*n+j]);
+                temp+=v1*v2;
+        }
+            assign(t.data[i*n+j],temp,t1.get_dtype_id());
+       }
+}
+         return t;
+}
+
+Tensor Tensor::mul_dot(Tensor &t2) throw(){
+    if(this->dimension!=t2.dimension)
+    {
+        throw std::invalid_argument("the dimensions of two tensor is not match");
+    }
+    for(size_t i=0;i<dimension-2;i++)
+    {
+        if(this->shape[i]!=t2.shape[i])
+        throw std::invalid_argument("the shape of two tensor is not match");
+    }
+    if(this->shape[dimension-1]!=t2.shape[dimension-2])
+    throw std::invalid_argument("the shape of two tensor is not match");
+    
+   if(this->dimension==2)
+   {
+    return mul_dot_2d(*(this),t2);
+   }else{
+    vector<Tensor> vecs;
+    for(int i=0;i<this->shape[0];i++)
+    {
+        Tensor temp1=(*this)(i);
+        Tensor temp2=t2(i);
+        Tensor temp_res=temp1.mul_dot(temp2);
+        vecs.push_back(temp_res.expansion_1d());
+    }
+    Tensor res=stack(vecs);
+    vecs.clear();
+
+    return res;
+   }
+
+
+
+    return Tensor();
+    
+
 }
 
 Tensor add(Tensor &ts1, Tensor &ts2) throw(){
@@ -1062,15 +1140,43 @@ void test_min(Tensor &ts){
     test_dim_fn(ts, ts::min);
 }
 
+//einsum-begin
+
+Tensor ts::einsum(char* s,Tensor& t1,Tensor &t2) throw(){
+   if(s=="i,i->")
+   {
+    return  t1.mul_dot(t2);
+   }else if (s=="i,i->i")
+   {
+     return t1.mul_pt(t2);
+   }else if (s=="i,j->ij")
+   {
+     return Tensor();
+   }
+   
+   
+}
+Tensor ts::einsum(char* s,Tensor& t1) throw()
+{
+     if(s!="ii->i") throw std::invalid_argument(" wrong input argument");
+
+     //to-get the dignal of the t1
+     
+}
+
+//esinsum-end
+
+
 Tensor Tensor::expansion_1d(){
     Tensor t = Tensor();
-    t.dimension = dimension;
+    t.dimension = dimension+1;
     t.shape.reset(new int[t.dimension]);
     t.shape[0] = 1;
     t.total_size = total_size;
     for(size_t i = 0; i < dimension; i++){
         t.shape[i + 1] = shape[i];
     }
+    t.shape[0]=1;
     t.data = data;
 
     return t;

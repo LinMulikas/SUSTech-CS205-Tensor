@@ -1,6 +1,6 @@
 #include <variant>
 #include <iostream>
-
+#include<string>
 using namespace std;
 
 class vec{
@@ -20,8 +20,10 @@ void print(){
 
 int main(){
    
-
-
+   char* s=new char[2];
+   s[0]='a';
+   s[1]='b';
+ 
     
     
     return 0;

@@ -113,6 +113,10 @@ public:
 
     Tensor mul_pt(VariantData vd);
 
+    Tensor mul_dot(Tensor& t2) throw();
+
+    friend Tensor mul_dot_2d(Tensor& t1,Tensor &t2);
+
     Tensor div_pt(Tensor &t2);
 
     Tensor div_pt(VariantData vd);
@@ -357,6 +361,9 @@ public:
 
     friend Tensor operator*(Tensor &t1, VariantData t2);
 
+    
+
+
 
     friend Tensor operator==(Tensor &t1, Tensor &t2);
 
@@ -461,6 +468,8 @@ Tensor le(Tensor &t1, Tensor &t2) throw();
 
 Tensor lt(Tensor &t1, Tensor &t2) throw();
 
+
+
 template<typename T, size_t N>
 static Tensor rand(int(&size)[N]){
     Tensor t = Tensor::init_with_shape<T>(size, N);
@@ -541,6 +550,14 @@ vector<Tensor> subtensors_at_dim(Tensor &ts, int subdim);
 /*
     zeros_like with exact type.
 */
+
+//esin-sum-begin
+
+Tensor einsum(char* a,Tensor&  t1, Tensor &t2) throw();
+Tensor einsum(char* a,Tensor& t1) throw();
+
+//esin-sum-end
+
 static Tensor zeros_like(Tensor &ts){
     switch(ts.get_dtype_id()){
         case 0:
