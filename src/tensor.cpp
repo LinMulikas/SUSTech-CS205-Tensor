@@ -1159,9 +1159,9 @@ Tensor ts::einsum(char* s,Tensor& t1,Tensor &t2) throw(){
 Tensor ts::einsum(char* s,Tensor& t1) throw()
 {
      if(s!="ii->i") throw std::invalid_argument(" wrong input argument");
-
+    return Tensor();
      //to-get the dignal of the t1
-     
+
 }
 
 //esinsum-end
