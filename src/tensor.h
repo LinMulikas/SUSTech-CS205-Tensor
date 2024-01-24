@@ -50,7 +50,8 @@ private:
 
     // Autograd
     bool _require_grad = false;
-    shared_ptr<grad::Node> _node;
+    shared_ptr<ts::Tensor> grad;
+    shared_ptr<grad::Node> node;
 
     template<typename ArrayType, size_t N>
     void copyData(ArrayType(&arr)[N], VariantData *&dest, VariantData *destEnd){
@@ -78,34 +79,20 @@ private:
     void test_dim_fn(Tensor(*fn)(Tensor &, int));
 
 public:
-    // public autograd
-    void set_node(shared_ptr<grad::Node>);
 
-    void set_grad(bool grad){
-        _require_grad = grad;
-    }
-
-    bool get_require_grad(){
+    bool get_require_grad() const{
         return _require_grad;
     }
 
-    void require_grad(){
-        this->set_grad(true);
-        this->init_node();
-    }
-
-    void init_node();
+    void set_require_grad(bool flag);
 
     vector<int> get_shape_vec();
 
-
-    grad::Node &node(){
-        return *_node;
+    void backward(){
+        node->backward();
     }
 
-    shared_ptr<grad::Node> node_ptr(){
-        return _node;
-    }
+    shared_ptr<grad::Node> &get_node();
 
     Tensor add(Tensor &t2);
 
@@ -144,13 +131,13 @@ public:
     //dim-operator
     Tensor expansion_1d();
 
-    Tensor mean(int dim);
+    Tensor mean(int, bool);
 
-    Tensor sum(int dim);
+    Tensor sum(int dim, bool keepdim);
 
-    Tensor min(int dim);
+    Tensor min(int dim, bool);
 
-    Tensor max(int dim);
+    Tensor max(int dim, bool);
 
 
     static VariantData copy_tile(VariantData *src, Tensor *dst, int idx, int *src_shape, int dim);
@@ -215,13 +202,13 @@ public:
 
     std::string type_name();
 
-    int get_dtype_id(){
+    int get_dtype_id() const{
         return dtype_id;
     }
 
-    VariantData *data_ptr();
+    VariantData *data_ptr() const;
 
-    int get_total_size();
+    int get_total_size() const;
 
     int *get_shape() const;
 
@@ -266,12 +253,12 @@ public:
 
     int cal_stride(int dim, int *shape);
 
-    friend std::ostream &operator<<(std::ostream &os, const Tensor &t);
+    friend std::ostream &operator<<(std::ostream &os, Tensor const &t);
 
 
-    Tensor operator()(int idx);
+    Tensor operator()(int idx) const;
 
-    Tensor operator()(int idx, std::pair<int, int> range);
+    Tensor operator()(int idx, std::pair<int, int> range) const;
 
     void operator=(const VariantData &value);
 
@@ -368,12 +355,11 @@ public:
 
     // Reduction operators
 
-    // Shrink the zero dims of a tensor.
-    Tensor shrink(Tensor &ts);
+    // Shrink the tensor of given dim 1.
+    Tensor shrink_at(int dim1);
 
     Tensor tile(vector<int> dimens);
 
-    // TODO: ?
     static Tensor sum(Tensor &ts, vector<int> dims);
 
     friend Tensor operator+(Tensor &t1, Tensor &t2);
@@ -402,25 +388,17 @@ public:
     friend Tensor operator>(Tensor &t1, Tensor &t2);
 
     Tensor inv_pt() throw();
+
+    void set_node(shared_ptr<grad::Node> node);
 };
 
-void test_dim_fn(Tensor &ts, Tensor(*fn)(Tensor &, int));
+Tensor sum(Tensor &ts, int dim, bool keepdim);
 
-void test_sum(Tensor &ts);
+Tensor mean(Tensor &ts, int dim, bool keepdim);
 
-void test_mean(Tensor &ts);
+Tensor max(Tensor &ts, int dim, bool keepdim);
 
-void test_max(Tensor &ts);
-
-void test_min(Tensor &ts);
-
-Tensor sum(Tensor &ts, int dim);
-
-Tensor mean(Tensor &ts, int dim);
-
-Tensor max(Tensor &ts, int dim);
-
-Tensor min(Tensor &ts, int dim);
+Tensor min(Tensor &ts, int dim, bool keepdim);
 
 
 // Math operators
@@ -448,7 +426,7 @@ Tensor Ln_no_grad(ts::Tensor &ts);
 
 Tensor Pow(Tensor &ts, unsigned int n);
 
-Tensor inv_pt(Tensor &ts) throw();
+Tensor inv_pt(Tensor ts) throw();
 
 Tensor add(Tensor &t1, Tensor &t2) throw();
 
@@ -456,7 +434,7 @@ Tensor add(Tensor &t1, VariantData &t2) throw();
 
 Tensor add_with_grad(Tensor &t1, Tensor &t2) throw();
 
-Tensor add_no_grad(Tensor &t1, Tensor &t2) throw();
+Tensor add_no_grad(Tensor const &t1, Tensor const &t2) throw();
 
 Tensor sub(Tensor &t1, Tensor &t2) throw();
 
@@ -464,7 +442,7 @@ Tensor sub(Tensor &t1, VariantData &t2) throw();
 
 Tensor sub_with_grad(Tensor &t1, Tensor &t2) throw();
 
-Tensor sub_no_grad(Tensor &t1, Tensor &t2) throw();
+Tensor sub_no_grad(Tensor const &t1, Tensor const &t2) throw();
 
 Tensor mul_pt(Tensor &t1, Tensor &t2) throw();
 
@@ -472,7 +450,7 @@ Tensor mul_pt(Tensor &t1, VariantData &t2) throw();
 
 Tensor mul_pt_with_grad(Tensor &t1, Tensor &t2) throw();
 
-Tensor mul_pt_no_grad(Tensor &t1, Tensor &t2) throw();
+Tensor mul_pt_no_grad(Tensor const &t1, Tensor const &t2) throw();
 
 Tensor div_pt(Tensor &t1, Tensor &t2) throw();
 
@@ -480,7 +458,7 @@ Tensor div_pt(Tensor &t1, VariantData &t2) throw();
 
 Tensor div_pt_with_grad(Tensor &t1, Tensor &t2) throw();
 
-Tensor div_pt_no_grad(Tensor &t1, Tensor &t2) throw();
+Tensor div_pt_no_grad(Tensor const &t1, Tensor const &t2) throw();
 
 Tensor eq(Tensor &t1, Tensor &t2) throw();
 
@@ -600,9 +578,11 @@ Tensor einsum(char *a, Tensor &t1, Tensor &t2) throw();
 
 Tensor einsum(char *a, Tensor &t1) throw();
 
+Tensor einisum(std::string_view pattern, std::pair<Tensor &, Tensor &> inputs);
+
 //esin-sum-end
 
-static Tensor zeros_like(Tensor &ts){
+static Tensor zeros_like(Tensor const &ts){
     switch(ts.get_dtype_id()){
         case 0:
             return zeros<double>(ts.get_shape(), ts.get_dimension());
@@ -645,7 +625,7 @@ static Tensor ones(int *size, const int dim){
 }
 
 
-static Tensor ones_like(Tensor &ts){
+static Tensor ones_like(Tensor const &ts){
     switch(ts.get_dtype_id()){
         case 0:
             return ones<double>(ts.get_shape(), ts.get_dimension());

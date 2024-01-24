@@ -8,215 +8,84 @@ class Node;
 };
 
 namespace ts{
+
 class Tensor;
 
 Tensor add(Tensor &ts1, Tensor &ts2) throw();
 
-
 };
 
+
 namespace grad{
+
 using std::make_shared, std::shared_ptr, std::vector;
 using std::initializer_list;
 using std::ostream, std::cin, std::cout, std::endl;
 
 class Node{
-protected:
+public:
     shared_ptr<ts::Tensor> value;
-    shared_ptr<Node> x;
-    shared_ptr<Node> grad;
-    vector<shared_ptr<Node>> parents;
-    vector<shared_ptr<Node>> children;
+    shared_ptr<ts::Tensor> grad;
 
-public:
-    Node(ts::Tensor &ts);
+    Node() : value(nullptr), grad(nullptr) {}
+    Node(ts::Tensor &v, ts::Tensor &g);
+    virtual ~Node() = default;
 
-    Node(vector<shared_ptr<Node>> &pars);
+    virtual void forward() = 0;
 
-    Node(const Node &that);
-
-    Node(){
-        value = nullptr;
-        x = nullptr;
-        grad = nullptr;
-        parents = {};
-        children = {};
-    };
-
-    ts::Tensor &getTensor(){
-        if(value == nullptr) this->eval();
-        return *value;
-    };
-
-    shared_ptr<ts::Tensor> value_ptr(){
-        return value;
-    }
-
-    shared_ptr<Node> grad_ptr(){
-        return grad;
-    }
-
-    vector<shared_ptr<Node>> parents_ptr(){
-        return parents;
-    }
-
-    vector<shared_ptr<Node>> children_ptr(){
-        return children;
-    }
-
-    friend ostream &operator<<(ostream &os, Node &node);
-
-    friend Node operator+(Node &node1, Node &node2);
-
-    virtual void eval();
-
-    virtual grad::Node gradTo(Node &that) throw();
+    virtual void backward() = 0;
 };
 
-class Variable : public Node{
+class ValueNode : public Node{
 public:
-    Variable(ts::Tensor &ts);
-
-    Variable(){};
-
-    virtual void eval(){};
-
-    virtual grad::Node gradTo(Node &that) throw();
-
+    ValueNode();
+    ValueNode(ts::Tensor & ts);
+    void forward() override {}
+    void backward() override {}
 };
 
-/*
-    The add-node has parents with size 2.
-*/
 class AddNode : public Node{
+private:
+    shared_ptr<Node> lhs, rhs;
 public:
-    AddNode(shared_ptr<Node> node1, shared_ptr<Node> node2);
+    AddNode(shared_ptr<Node> l, shared_ptr<Node> r) : lhs(l), rhs(r) {}
 
-    AddNode(Node &a, Node &b);
+    void forward() override;
 
-    AddNode(Node a){
-        value = a.value_ptr();
-        grad = a.grad_ptr();
-        parents = a.parents_ptr();
-        children = a.children_ptr();
-    }
-
-    virtual void eval() throw();
-
-    virtual grad::Node gradTo(Node &that) throw();
+    void backward() override;
 };
 
 class SubNode : public Node{
+private:
+    shared_ptr<Node> lhs, rhs;
 public:
-    SubNode(shared_ptr<Node> node1, shared_ptr<Node> node2);
+    SubNode(shared_ptr<Node> l, shared_ptr<Node> r) : lhs(l), rhs(r) {}
 
-    SubNode(Node &a, Node &b);
+    void forward() override;
 
-    SubNode(Node a){
-        value = a.value_ptr();
-        grad = a.grad_ptr();
-        parents = a.parents_ptr();
-        children = a.children_ptr();
-    }
-
-    virtual void eval() throw();
-
-    virtual grad::Node gradTo(Node &that) throw();
+    void backward() override;
 };
 
-class MulPtNode : public Node{
+class MulNode : public Node{
+private:
+    shared_ptr<Node> lhs, rhs;
 public:
-    MulPtNode(shared_ptr<Node> node1, shared_ptr<Node> node2);
+    MulNode(shared_ptr<Node> l, shared_ptr<Node> r) : lhs(l), rhs(r) {}
 
-    MulPtNode(Node &a, Node &b);
+    void forward() override;
 
-    MulPtNode(Node a){
-        value = a.value_ptr();
-        grad = a.grad_ptr();
-        parents = a.parents_ptr();
-        children = a.children_ptr();
-    }
-
-    virtual void eval() throw();
-
-    virtual grad::Node gradTo(Node &that) throw();
-
+    void backward() override;
 };
 
-class DivPtNode : public Node{
+class DivNode : public Node{
+private:
+    shared_ptr<Node> lhs, rhs;
 public:
-    DivPtNode(shared_ptr<Node> node1, shared_ptr<Node> node2);
+    DivNode(shared_ptr<Node> l, shared_ptr<Node> r) : lhs(l), rhs(r) {}
 
-    DivPtNode(Node &a, Node &b);
+    void forward() override;
 
-    DivPtNode(Node a){
-        value = a.value_ptr();
-        grad = a.grad_ptr();
-        parents = a.parents_ptr();
-        children = a.children_ptr();
-    }
-
-    virtual void eval() throw();
-
-    virtual grad::Node gradTo(Node &that) throw();
-
+    void backward() override;
 };
-
-
-class SinNode : public Node{
-public:
-    SinNode(Node &node);
-
-    SinNode(ts::Tensor &ts);
-
-    SinNode(){};
-
-    virtual void eval() throw();
-
-    virtual grad::Node gradTo(Node &that) throw();
-};
-
-class CosNode : public Node{
-public:
-    CosNode(Node &node);
-
-    CosNode(ts::Tensor &ts);
-
-    CosNode(){};
-
-    virtual void eval() throw();
-
-    virtual grad::Node gradTo(Node &that) throw();
-};
-
-//
-//class ExpNode : public Node{
-//public:
-//    ExpNode(Node &node);
-//
-//    ExpNode(ts::Tensor &ts);
-//
-//    ExpNode(){};
-//
-//    virtual void eval() throw();
-//
-//    virtual grad::Node gradTo(Node &that) throw();
-//};
-//
-//class LnNode : public Node{
-//public:
-//    LnNode(Node &node);
-//
-//    LnNode(ts::Tensor &ts);
-//
-//    LnNode(){};
-//
-//    virtual void eval() throw();
-//
-//    virtual grad::Node gradTo(Node &that) throw();
-//};
-
-
-grad::Node autograd(ts::Tensor &in, ts::Tensor &out) throw();
 
 };

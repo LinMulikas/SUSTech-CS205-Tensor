@@ -1,303 +1,87 @@
 #include "tensor.h"
 #include "grad.h"
-#include <type_traits>
+
+#include <utility>
 
 namespace grad{
 using std::make_shared, std::shared_ptr, std::vector;
 using std::initializer_list;
 using std::ostream, std::cin, std::cout, std::endl;
 
-Node operator+(Node &node1, Node &node2){
-    // cout << "Test operator+" << endl;
-    return AddNode(node1, node2);
+Node::Node(ts::Tensor &v, ts::Tensor &g){
+    value = make_shared<ts::Tensor>(v);
+    grad = make_shared<ts::Tensor>(g);
 }
 
-ostream &operator<<(ostream &os, Node &node){
-    os << node.getTensor();
-    return os;
+ValueNode::ValueNode(){
+    this->value = nullptr;
+//    cout << *this->value << endl;
+    this->grad = nullptr;
 }
 
-
-// Out-class implements
-
-
-
-/*
-    Node implement
-*/
-void Node::eval(){}
-
-Node::Node(const grad::Node &that){
-    value = that.value;
-    grad = that.grad;
-    parents = that.parents;
-    children = that.children;
+ValueNode::ValueNode(ts::Tensor &ts){
+    this->value = make_shared<ts::Tensor>(ts);
+//    cout << *this->value << endl;
+    this->grad = make_shared<ts::Tensor>(ts::zeros_like(ts));
 }
 
-Node::Node(ts::Tensor &ts){
-    value = make_shared<ts::Tensor>(ts);
+void AddNode::forward(){
+    this->value = make_shared<ts::Tensor>(ts::add_no_grad((*lhs->value), (*rhs->value)));
 }
 
-Node::Node(vector<shared_ptr<grad::Node>> &pars){
-    parents = pars;
+void AddNode::backward(){
+//    *grad = ts::ones_like(*lhs->value);
+    grad = make_shared<ts::Tensor>(ts::ones_like(*lhs->value));
+    *lhs->grad = (*lhs->grad) + (*grad);
+    *rhs->grad = (*rhs->grad) + (*grad);
+    lhs->backward();
+    rhs->backward();
 }
 
-grad::Node Node::gradTo(Node &that) throw(){
-    that.eval();
-    Node result;
-    result.value = make_shared<ts::Tensor>(ts::zeros_like(*that.value));
-    return result;
+void SubNode::forward(){
+    this->value = make_shared<ts::Tensor>(ts::add_no_grad((*lhs->value), (*rhs->value)));
 }
 
-/*
- * Variable implement
- */
-
-Variable::Variable(ts::Tensor &ts){
-    value = make_shared<ts::Tensor>(ts);
+void SubNode::backward(){
+//    *grad = ts::ones_like(*lhs->value);
+    grad = make_shared<ts::Tensor>(ts::ones_like(*lhs->value));
+    *lhs->grad = (*lhs->grad) + (*grad);
+    *rhs->grad = (*rhs->grad) - (*grad);
+    lhs->backward();
+    rhs->backward();
 }
 
-grad::Node Variable::gradTo(Node &that) throw(){
-    if(&that != this){
-        ts::Tensor tensor = ts::zeros_like(*that.value_ptr());
-        Node result{tensor};
-        return result;
-    }
-    if(&that == this){
-        Node result{*this->value};
-        return result;
-    }
+void MulNode::forward(){
+    this->value = make_shared<ts::Tensor>(ts::mul_pt_no_grad((*lhs->value), (*rhs->value)));
 }
 
-/*
-    AddNode implement
-*/
-
-AddNode::AddNode(shared_ptr<Node> node1, shared_ptr<Node> node2){
-    parents.push_back(node1);
-    parents.push_back(node2);
+void MulNode::backward(){
+//    *grad = ts::ones_like(*lhs->value);
+    grad = make_shared<ts::Tensor>(ts::ones_like(*lhs->value));
+    *lhs->grad = ts::mul_pt_no_grad((*rhs->value), (*grad));
+//    cout << "Value: " << (*rhs->value) << endl;
+    *rhs->grad = ts::mul_pt_no_grad((*lhs->value), (*grad));
+    lhs->backward();
+    rhs->backward();
 }
 
-AddNode::AddNode(Node &node1, Node &node2){
-    // std::cout << "Test AddNode constructor." << std::endl;
-    parents.push_back(make_shared<Node>(node1));
-    parents.push_back(make_shared<Node>(node2));
+void DivNode::forward(){
+    this->value = make_shared<ts::Tensor>(ts::div_pt_no_grad((*lhs->value), (*rhs->value)));
 }
 
-void AddNode::eval() throw(){
-    // cout << "test AddNode::eval" << endl;
-    if(value == nullptr){
-        for(shared_ptr<Node> node: parents){
-            node->eval();
-        }
-        // The parents node must be size 2.
-        ts::Tensor &ts1 = parents[0]->getTensor();
-        ts::Tensor &ts2 = parents[1]->getTensor();
-//        cout << "test" << endl;
-//        cout << ts1 << endl;
-//        cout << ts2 << endl;
-        value = make_shared<ts::Tensor>(ts::add_no_grad(ts1, ts2));
-    }
+void DivNode::backward(){
+//    *grad = ts::ones_like(*lhs->value);
+    grad = make_shared<ts::Tensor>(ts::ones_like(*lhs->value));
+    *lhs->grad = ts::div_pt_no_grad((*grad), (*rhs->value));
+    *rhs->grad = ts::sub_no_grad(
+            (*rhs->grad),
+            ts::mul_pt_no_grad(
+                    *lhs->value,
+                    ts::mul_pt_no_grad(
+                            (*rhs->value).inv_pt(),
+                            (*rhs->value).inv_pt())));
+    lhs->backward();
+    rhs->backward();
 }
-
-grad::Node AddNode::gradTo(Node &that) throw(){
-    grad::Node lhs = parents[0]->gradTo(that);
-    grad::Node rhs = parents[1]->gradTo(that);
-    grad::AddNode result{lhs, rhs};
-    result.eval();
-    return result;
-}
-
-/*
-    SubNode implement
-*/
-
-SubNode::SubNode(shared_ptr<Node> node1, shared_ptr<Node> node2){
-    parents.push_back(node1);
-    parents.push_back(node2);
-}
-
-SubNode::SubNode(Node &node1, Node &node2){
-    // std::cout << "Test AddNode constructor." << std::endl;
-    parents.push_back(make_shared<Node>(node1));
-    parents.push_back(make_shared<Node>(node2));
-}
-
-void SubNode::eval() throw(){
-    // cout << "test AddNode::eval" << endl;
-    if(value == nullptr){
-        for(shared_ptr<Node> node: parents){
-            node->eval();
-        }
-        // The parents node must be size 2.
-        ts::Tensor &ts1 = parents[0]->getTensor();
-        ts::Tensor &ts2 = parents[1]->getTensor();
-        value = make_shared<ts::Tensor>(ts::sub_no_grad(ts1, ts2));
-    }
-}
-
-grad::Node SubNode::gradTo(Node &that) throw(){
-    grad::Node lhs = parents[0]->gradTo(that);
-    grad::Node rhs = parents[1]->gradTo(that);
-    grad::SubNode result{lhs, rhs};
-    result.eval();
-    return result;
-}
-
-/*
-    MulPtNode implement
-*/
-
-MulPtNode::MulPtNode(shared_ptr<Node> node1, shared_ptr<Node> node2){
-    parents.push_back(node1);
-    parents.push_back(node2);
-}
-
-MulPtNode::MulPtNode(Node &node1, Node &node2){
-    // std::cout << "Test AddNode constructor." << std::endl;
-    parents.push_back(make_shared<Node>(node1));
-    parents.push_back(make_shared<Node>(node2));
-}
-
-void MulPtNode::eval() throw(){
-    // cout << "test AddNode::eval" << endl;
-    if(value == nullptr){
-        for(shared_ptr<Node> node: parents){
-            node->eval();
-        }
-        // The parents node must be size 2.
-        ts::Tensor &ts1 = parents[0]->getTensor();
-        ts::Tensor &ts2 = parents[1]->getTensor();
-//        cout << "test" << endl;
-//        cout << ts1 << endl;
-//        cout << ts2 << endl;
-        value = make_shared<ts::Tensor>(ts::mul_pt_no_grad(ts1, ts2));
-    }
-}
-
-grad::Node MulPtNode::gradTo(Node &that) throw(){
-    grad::Node lhs = parents[0]->gradTo(that);
-    grad::Node rhs = parents[1]->gradTo(that);
-    grad::MulPtNode result{lhs, rhs};
-    result.eval();
-    return result;
-}
-
-/*
-    DivPtNode implement
-*/
-
-DivPtNode::DivPtNode(shared_ptr<Node> node1, shared_ptr<Node> node2){
-    parents.push_back(node1);
-    parents.push_back(node2);
-}
-
-DivPtNode::DivPtNode(Node &node1, Node &node2){
-    // std::cout << "Test AddNode constructor." << std::endl;
-    parents.push_back(make_shared<Node>(node1));
-    parents.push_back(make_shared<Node>(node2));
-}
-
-void DivPtNode::eval() throw(){
-    // cout << "test AddNode::eval" << endl;
-    if(value == nullptr){
-        for(shared_ptr<Node> node: parents){
-            node->eval();
-        }
-        // The parents node must be size 2.
-        ts::Tensor &ts1 = parents[0]->getTensor();
-        ts::Tensor &ts2 = parents[1]->getTensor();
-//        cout << "test" << endl;
-//        cout << ts1 << endl;
-//        cout << ts2 << endl;
-        value = make_shared<ts::Tensor>(ts::div_pt_no_grad(ts1, ts2));
-    }
-}
-
-grad::Node DivPtNode::gradTo(Node &that) throw(){
-    grad::Node lhs = parents[0]->gradTo(that);
-    grad::Node rhs = parents[1]->gradTo(that);
-    grad::DivPtNode result{lhs, rhs};
-    result.eval();
-    return result;
-}
-
-/*
- * Sin
- */
-
-SinNode::SinNode(Node &node){
-    value = make_shared<ts::Tensor>(ts::Sin_no_grad(*node.value_ptr()));
-}
-
-SinNode::SinNode(ts::Tensor &tensor){
-    value = make_shared<ts::Tensor>(ts::Sin_no_grad(tensor));
-}
-
-void SinNode::eval() throw(){
-    if(value == nullptr){
-        parents[0]->eval();
-        // The parents node must be size 2.
-        ts::Tensor &tensor = parents[0]->getTensor();
-        value = make_shared<ts::Tensor>(ts::Sin_no_grad(tensor));
-    }
-}
-
-grad::Node SinNode::gradTo(grad::Node &that) throw(){
-    grad::Node lhs{*parents[0]};
-    grad::CosNode rhs{*parents[0]};
-    grad::MulPtNode result{lhs, rhs};
-    result.eval();
-    return result;
-}
-
-/*
- * Cos
- */
-
-CosNode::CosNode(Node &node){
-    value = make_shared<ts::Tensor>(ts::Sin_no_grad(*node.value_ptr()));
-}
-
-CosNode::CosNode(ts::Tensor &tensor){
-    value = make_shared<ts::Tensor>(ts::Sin_no_grad(tensor));
-}
-
-void CosNode::eval() throw(){
-    if(value == nullptr){
-        parents[0]->eval();
-        // The parents node must be size 2.
-        ts::Tensor &tensor = parents[0]->getTensor();
-        value = make_shared<ts::Tensor>(ts::Cos_no_grad(tensor));
-    }
-}
-
-grad::Node CosNode::gradTo(grad::Node &that) throw(){
-    grad::Node lhs{*parents[0]};
-    grad::SinNode rhs{*parents[0]};
-    // TODO
-    grad::MulPtNode result{lhs, rhs};
-    result.eval();
-    return result;
-}
-
-/*
- * Autograd implement
- */
-
-grad::Node autograd(ts::Tensor &input, ts::Tensor &output) throw(){
-    if(input.node_ptr() == nullptr)
-        input.init_node();
-    if(output.node_ptr() == nullptr)
-        output.init_node();
-    return output.node().gradTo(input.node());
-}
-
-// Autograd.
-
-
-
-
-
 
 };
