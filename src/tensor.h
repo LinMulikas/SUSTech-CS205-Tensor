@@ -32,7 +32,7 @@ static int dtype_id_from(){
     if(typeid(T) == typeid(int)) return 1;
     if(typeid(T) == typeid(float)) return 2;
     if(typeid(T) == typeid(double)) return 3;
-    return -1;
+    return 1;
 }
 
 static bool global_require_grad = false;
@@ -231,7 +231,32 @@ public:
         shape.reset(new int[dimension]);
         using BaseType = typename std::remove_all_extents<T>::type();
         // type_name = typeid(BaseType).name();
+        bool flag = (typeid(T) == typeid(int[]));
+//        cout <<  << endl;
+        dtype_id = dtype_id_from<T>();
 
+        getShape(arr, 0);
+
+        // copy array to data
+        total_size = 1;
+        for(int i = 0; i < dimension; i++){
+            total_size *= shape[i];
+        }
+        data_shared.reset(new VariantData[total_size]);
+        data = data_shared.get();
+        VariantData *pointer = data;
+        copyData(arr, pointer, data_shared.get() + total_size);
+    }
+
+    template<typename T, size_t M, size_t  N>
+    explicit Tensor(T arr[M][N], int dim){
+        // dimension of arr, e.g. double[2][1] dimension = 2
+        dimension = std::rank<T>::value + 1;
+        shape.reset(new int[dimension]);
+        using BaseType = typename std::remove_all_extents<T>::type();
+        // type_name = typeid(BaseType).name();
+        bool flag = (typeid(T) == typeid(int));
+//        cout <<  << endl;
         dtype_id = dtype_id_from<T>();
 
         getShape(arr, 0);
