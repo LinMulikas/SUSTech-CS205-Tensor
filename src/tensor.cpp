@@ -557,11 +557,7 @@ Tensor operator+(Tensor &t1, VariantData &t2){
 }
 
 Tensor operator-(Tensor &ts1, Tensor &ts2){
-    if(ts1.get_require_grad() || ts2.get_require_grad()){
-        return sub_with_grad(ts1, ts2);
-    }else{
-        return sub(ts1, ts2);
-    }
+    return ts::sub(ts1, ts2);
 }
 
 Tensor operator-(Tensor &ts1, VariantData &ts2){

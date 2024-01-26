@@ -45,8 +45,8 @@ void SubNode::forward(){
 void SubNode::backward(){
 //    *grad = ts::ones_like(*lhs->value);
     grad = make_shared<ts::Tensor>(ts::ones_like(*lhs->value));
-    *lhs->grad = (*lhs->grad) + (*grad);
-    *rhs->grad = (*rhs->grad) - (*grad);
+    *lhs->grad = ts::add_no_grad(*lhs->grad, (*grad));
+    *rhs->grad = ts::sub_no_grad(*rhs->grad, (*grad));
     lhs->backward();
     rhs->backward();
 }
