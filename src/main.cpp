@@ -115,7 +115,22 @@ void test_211_indexing(){
 }
 
 void test_212_slicing(){
+    Tensor t1 = rand<double>({2, 3});
+    std::pair one_pair = std::make_pair(2, 4);
+    std::cout << "slice:" << t1(1, one_pair) << std::endl;
+/*
+slice is the same as index
+so as its multiply-form
+*/
 
+
+//4.menmory_sharing
+    Tensor t_new_2 = t1(1, one_pair);
+    std::cout << "share_same_data_memory?" << ((&(t1.data_ptr()[4])) == (&(t_new_2.data_ptr()[0]))) << std::endl;
+    std::cout << "share_same_data_memory?" << ((&(t1.data_ptr()[5])) == (&(t_new_2.data_ptr()[1]))) << std::endl;
+/*
+they are the same address
+*/
 }
 
 int main(){
@@ -124,22 +139,6 @@ int main(){
 //
 
 //
-////3.
-//    std::pair one_pair=std::make_pair(2,4);
-//    std::cout<<"slice:"<<t1(1,one_pair)<<std::endl;
-///*
-//slice is the same as index
-//so as its multiply-form
-//*/
-//
-//
-////4.menmory_sharing
-//    Tensor t_new_2=t1(1,one_pair);
-//    std::cout<<"share_same_data_memory?"<<((&(t1.data_ptr()[4]))==(&(t_new_2.data_ptr()[0])))<<std::endl;
-//    std::cout<<"share_same_data_memory?"<<((&(t1.data_ptr()[5]))==(&(t_new_2.data_ptr()[1])))<<std::endl;
-///*
-//they are the same address
-//*/
 //
 //
 ////5.cat
