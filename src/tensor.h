@@ -248,6 +248,8 @@ public:
         copyData(arr, pointer, data_shared.get() + total_size);
     }
 
+
+
     template<typename T, size_t M, size_t  N>
     explicit Tensor(T arr[M][N], int dim){
         // dimension of arr, e.g. double[2][1] dimension = 2
