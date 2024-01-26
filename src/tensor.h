@@ -160,6 +160,7 @@ public:
         return t;
     }
 
+
     // init a tensor with exact shape arr and dim N.
     static Tensor init_with_shape(const int size[], int N){
         Tensor t = Tensor();
@@ -197,7 +198,7 @@ public:
         t.dtype_id = dtype_id_from<T>();
         return t;
     }
-    
+
 
     int *size();
 
@@ -250,8 +251,7 @@ public:
     }
 
 
-
-    template<typename T, size_t M, size_t  N>
+    template<typename T, size_t M, size_t N>
     explicit Tensor(T arr[M][N], int dim){
         // dimension of arr, e.g. double[2][1] dimension = 2
         dimension = std::rank<T>::value + 1;
@@ -690,7 +690,7 @@ static Tensor full(int(&size)[N], T value){
     return t;
 }
 
-Tensor cat(const std::pair<Tensor, Tensor> &tensors, int dim);
+Tensor cat(std::pair<Tensor, Tensor> &tensors, int dim);
 
 // Expand the data to the given same dimension shape arr.
 template<size_t N>
